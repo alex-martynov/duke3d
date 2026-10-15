@@ -187,7 +187,8 @@ static char egapalette[] = { 0, 0, 0,
 static unsigned int scancodes[SDL_NUM_SCANCODES];
 
 static long last_render_ticks = 0;
-static Uint64 conv_time = 0;  /* perf counter ticks spent expanding frames, per second */
+static Uint64 conv_time = 0;
+static long vsync_applied = -1;  /* vsync state the renderer has */  /* perf counter ticks spent expanding frames, per second */
 long total_render_time = 1;
 long total_rendered_frames = 0;
 
@@ -487,11 +488,14 @@ static void go_to_new_vid_mode(int vidoption, int w, int h)
             fatal_video_error("SDL_CreateWindow()", w, h);
 
         {
-            const char *vs = getenv(BUILD_VSYNC);
+            const char *vs = getenv(BUILD_VSYNC);  /* overrides the setting */
             Uint32 rflags = SDL_RENDERER_ACCELERATED;
-            if ((vs == NULL) || (atoi(vs) != 0))
+            if (vs != NULL)
+                vsync = (atoi(vs) != 0);
+            if (vsync)
                 rflags |= SDL_RENDERER_PRESENTVSYNC;
             sdlrenderer = SDL_CreateRenderer(window, -1, rflags);
+            vsync_applied = vsync;
         }
         if (sdlrenderer == NULL)  /* no vsync/acceleration? Take anything. */
             sdlrenderer = SDL_CreateRenderer(window, -1, 0);
@@ -775,6 +779,13 @@ static void present_framebuffer(void)
     conv_time += SDL_GetPerformanceCounter() - t0;
 
     SDL_UnlockTexture(texture);
+
+    if ((vsync != 0) != (vsync_applied != 0))  /* changed in the menu */
+    {
+        if (SDL_RenderSetVSync(sdlrenderer, vsync ? 1 : 0) != 0)
+            sdldebug("SDL_RenderSetVSync(%d) failed: [%s].", (int) (vsync != 0), SDL_GetError());
+        vsync_applied = vsync;
+    } /* if */
 
     SDL_SetRenderDrawColor(sdlrenderer, 0, 0, 0, 255);
     SDL_RenderClear(sdlrenderer);
