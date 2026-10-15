@@ -3595,9 +3595,10 @@ static void dorotatesprite (long sx, long sy, long z, short a, short picnum,
 	{
 		if ((dastat&8) == 0)
 		{
-			x = xdimenscale;   /* = scale(xdimen,yxaspect,320); */
+			long ew = scale(xdimen,width4x3(),xdim);  /* 4:3 part of the view */
+			x = scale(ew,yxaspect,320);   /* = xdimenscale when not widescreen */
 			if (stereomode) x = scale(windowx2-windowx1+1,yxaspect,320);
-			sx = ((cx1+cx2+2)<<15)+scale(sx-(320<<15),xdimen,320);
+			sx = ((cx1+cx2+2)<<15)+scale(sx-(320<<15),ew,320);
 			sy = ((cy1+cy2+2)<<15)+mulscale16(sy-(200<<15),x);
 		}
 		else
@@ -3606,8 +3607,8 @@ static void dorotatesprite (long sx, long sy, long z, short a, short picnum,
 			   * If not clipping to startmosts, & auto-scaling on, as a
 			   *  hard-coded bonus, scale to full screen instead
                */
-            x = scale(xdim,yxaspect,320);
-			sx = (xdim<<15)+32768+scale(sx-(320<<15),xdim,320);
+            x = scale(width4x3(),yxaspect,320);
+			sx = (xdim<<15)+32768+scale(sx-(320<<15),width4x3(),320);
 			sy = (ydim<<15)+32768+mulscale16(sy-(200<<15),x);
 		}
 		z = mulscale16(z,x);
@@ -3641,6 +3642,32 @@ static void dorotatesprite (long sx, long sy, long z, short a, short picnum,
 	i = (cx2<<16); if ((rx1[0]>i) && (rx1[1]>i) && (rx1[2]>i) && (rx1[3]>i)) return;
 
 	gx1 = rx1[0]; gy1 = ry1[0];   /* back up these before clipping */
+
+		/*
+		 * A full-screen 320x200 picture only covers the 4:3 middle of a
+		 *  wide screen; black out the sides instead of leaving old frames.
+		 */
+	if (((dastat&10) == 10) && (width4x3() < xdim))
+	{
+		long minx = min(min(rx1[0],rx1[1]),min(rx1[2],rx1[3]));
+		long maxx = max(max(rx1[0],rx1[1]),max(rx1[2],rx1[3]));
+		long miny = min(min(ry1[0],ry1[1]),min(ry1[2],ry1[3]));
+		long maxy = max(max(ry1[0],ry1[1]),max(ry1[2],ry1[3]));
+		long pl = (xdim-width4x3())>>1;
+
+		if ((minx <= ((pl+1)<<16)) && (maxx >= ((xdim-pl-1)<<16)) &&
+		    (miny <= 65536) && (maxy >= ((ydim-1)<<16)))
+		{
+			long l = max(cx1,0), r = min(cx2,xdim-1);
+			long xl = min(minx>>16,r+1), xr = max((maxx>>16)+1,l);
+			for(y=max(cy1,0);y<=min(cy2,ydim-1);y++)
+			{
+				p = frameplace+ylookup[y];
+				if (xl > l) clearbufbyte((void *)(p+l),xl-l,0L);
+				if (r >= xr) clearbufbyte((void *)(p+xr),r-xr+1,0L);
+			}
+		}
+	}
 
 	if ((npoints = clippoly4(cx1<<16,cy1<<16,(cx2+1)<<16,(cy2+1)<<16)) < 3) return;
 
@@ -7742,6 +7769,14 @@ void getzrange(long x, long y, long z, short sectnum,
 }
 
 
+/* Width of the 4:3 part of the screen (all of it when 4:3 or narrower). */
+static long width4x3(void)
+{
+	if (xdim*3 > ydim*4) return((ydim*4)/3);
+	return(xdim);
+}
+
+
 void setview(long x1, long y1, long x2, long y2)
 {
 	long i;
@@ -7755,7 +7790,8 @@ void setview(long x1, long y1, long x2, long y2)
 	xdimenrecip = divscale32(1L,xdimen);
 	ydimen = (y2-y1)+1;
 
-	setaspect(65536L,(long)divscale16(ydim*320L,xdim*200L));
+	wideviewrange = divscale16(xdim,width4x3());
+	setaspect(wideviewrange,(long)divscale16(ydim*320L,width4x3()*200L));
 
 	for(i=0;i<windowx1;i++) { startumost[i] = 1, startdmost[i] = 0; }
 	for(i=windowx1;i<=windowx2;i++)

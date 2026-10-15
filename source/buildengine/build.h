@@ -178,6 +178,12 @@ EXTERN short nextspritesect[MAXSPRITES], nextspritestat[MAXSPRITES];
 EXTERN short tilesizx[MAXTILES], tilesizy[MAXTILES];
 EXTERN char walock[MAXTILES];
 EXTERN long numtiles, picanm[MAXTILES];
+/*
+ * Widescreen: the 3D view keeps the vertical field of view of 4:3 and widens
+ *  horizontally ("Hor+"); wideviewrange is that factor (16.16), 65536 at 4:3
+ *  or narrower. 2D art in 320x200 coordinates is centred in a 4:3 area.
+ */
+EXTERN long wideviewrange;
 EXTERN long texfilter;  /* nonzero: dithered texture filtering on walls and flat floors */
 EXTERN long screenfilter;  /* scaling to the window: 0 nearest, 1 linear, 2 sharp (integer prescale, then linear) */
 EXTERN intptr_t waloff[MAXTILES];  /* tile data addresses */

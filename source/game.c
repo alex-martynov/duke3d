@@ -2618,6 +2618,18 @@ void drawbackground(void)
           for(x=0;x<xdim;x+=128)
                 rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,0,y1,xdim-1,y2-1);
 
+         /* on wide screens the status bar only covers the 4:3 middle */
+     if( y2 < ydim && xdim*3 > ydim*4 )
+     {
+          x1 = (xdim-(ydim*4)/3)>>1;
+          for(y=y2;y<ydim;y+=128)
+               for(x=0;x<xdim;x+=128)
+               {
+                    rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,0,y2,x1-1,ydim-1);
+                    rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,xdim-x1,y2,xdim-1,ydim-1);
+               }
+     }
+
      if(ud.screen_size > 8)
      {
           y = 0;
@@ -2819,7 +2831,7 @@ void displayrooms(short snum,long smoothratio)
     long cposx,cposy,cposz,dst,j,fz,cz,hz,lz;
     short sect, cang, k, choriz,tsect;
     struct player_struct *p;
-    long tposx,tposy,tposz,dx,dy,thoriz,i;
+    long tposx,tposy,tposz,dx,dy,thoriz,i,tilew;
     short tang;
 
     p = &ps[snum];
@@ -2872,7 +2884,7 @@ void displayrooms(short snum,long smoothratio)
         if (i != oyrepeat)
         {
             oyrepeat = i;
-            setaspect(oyrepeat,yxaspect);
+            setaspect(mulscale16(oyrepeat,wideviewrange),yxaspect);
         }
 
         if(screencapt)
@@ -2886,17 +2898,19 @@ void displayrooms(short snum,long smoothratio)
         {
                 if (ud.screen_tilting) tang = p->rotscrnang; else tang = 0;
 
+                    /* the tile is as much wider than 320 as the screen is than 4:3 */
+                tilew = min(mulscale16(320L,wideviewrange),640L);
                 walock[MAXTILES-2] = 255;
                 if (waloff[MAXTILES-2] == 0)
-                    allocache(&waloff[MAXTILES-2],320L*320L,&walock[MAXTILES-2]);
+                    allocache(&waloff[MAXTILES-2],640L*640L,&walock[MAXTILES-2]);
                 if ((tang&1023) == 0)
-                    setviewtotile(MAXTILES-2,200L>>(1-ud.detail),320L>>(1-ud.detail));
+                    setviewtotile(MAXTILES-2,200L>>(1-ud.detail),tilew>>(1-ud.detail));
                 else
-                    setviewtotile(MAXTILES-2,320L>>(1-ud.detail),320L>>(1-ud.detail));
+                    setviewtotile(MAXTILES-2,tilew>>(1-ud.detail),tilew>>(1-ud.detail));
                 if ((tang&1023) == 512)
                 {     //Block off unscreen section of 90ø tilted screen
-                    j = ((320-60)>>(1-ud.detail));
-                    for(i=(60>>(1-ud.detail))-1;i>=0;i--)
+                    j = ((tilew-((tilew-200)>>1))>>(1-ud.detail));
+                    for(i=(((tilew-200)>>1)>>(1-ud.detail))-1;i>=0;i--)
                     {
                         startumost[i] = 1; startumost[i+j] = 1;
                         startdmost[i] = 0; startdmost[i+j] = 0;
@@ -2905,7 +2919,7 @@ void displayrooms(short snum,long smoothratio)
 
                 i = (tang&511); if (i > 256) i = 512-i;
                 i = sintable[i+512]*8 + sintable[i]*5L;
-                setaspect(i>>1,yxaspect);
+                setaspect(mulscale16(i>>1,divscale16(tilew,320L)),yxaspect);
           }
 
           if ( (snum == myconnectindex) && (numplayers > 1) )
