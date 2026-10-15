@@ -187,6 +187,7 @@ static char egapalette[] = { 0, 0, 0,
 static unsigned int scancodes[SDL_NUM_SCANCODES];
 
 static long last_render_ticks = 0;
+static Uint64 conv_time = 0;  /* perf counter ticks spent expanding frames, per second */
 long total_render_time = 1;
 long total_rendered_frames = 0;
 
@@ -485,8 +486,13 @@ static void go_to_new_vid_mode(int vidoption, int w, int h)
         if (window == NULL)
             fatal_video_error("SDL_CreateWindow()", w, h);
 
-        sdlrenderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED |
-                                                     SDL_RENDERER_PRESENTVSYNC);
+        {
+            const char *vs = getenv(BUILD_VSYNC);
+            Uint32 rflags = SDL_RENDERER_ACCELERATED;
+            if ((vs == NULL) || (atoi(vs) != 0))
+                rflags |= SDL_RENDERER_PRESENTVSYNC;
+            sdlrenderer = SDL_CreateRenderer(window, -1, rflags);
+        }
         if (sdlrenderer == NULL)  /* no vsync/acceleration? Take anything. */
             sdlrenderer = SDL_CreateRenderer(window, -1, 0);
         if (sdlrenderer == NULL)
@@ -599,13 +605,164 @@ static SDL_Texture *scaled_frame(void)
 } /* scaled_frame */
 
 
+/*
+ * Palette expansion of the 8-bit frame into the 32-bit texture. At 4K that
+ *  is 8 million lookups a frame, so the rows are split into bands and
+ *  expanded by a small pool of worker threads plus the main thread.
+ */
+#define MAXCONVTHREADS 15
+#define MINPIXELSPERBAND (320*200)  /* below this, threads cost more than they save */
+
+typedef struct
+{
+    int y0, y1;
+    Uint8 *dst;
+    int dstpitch;
+} convband;
+
+static SDL_Thread *convthread[MAXCONVTHREADS];
+static SDL_sem *convstart[MAXCONVTHREADS];
+static SDL_sem *convdone = NULL;
+static convband convbands[MAXCONVTHREADS+1];
+static int convthreads = -1;  /* workers; -1 = not started yet */
+static volatile int convquit = 0;
+
+static void expand_rows(const convband *band)
+{
+    const Uint8 *src = ((const Uint8 *) surface->pixels) + (band->y0 * surface->pitch);
+    Uint8 *dstrow = band->dst + (band->y0 * band->dstpitch);
+    const int w = surface->w;
+    int x, y;
+
+    for (y = band->y0; y < band->y1; y++)
+    {
+        Uint32 *dst = (Uint32 *) dstrow;
+        for (x = 0; x + 4 <= w; x += 4)
+        {
+            dst[x]   = palette32[src[x]];
+            dst[x+1] = palette32[src[x+1]];
+            dst[x+2] = palette32[src[x+2]];
+            dst[x+3] = palette32[src[x+3]];
+        } /* for */
+        for (; x < w; x++)
+            dst[x] = palette32[src[x]];
+        src += surface->pitch;
+        dstrow += band->dstpitch;
+    } /* for */
+} /* expand_rows */
+
+static int SDLCALL conv_worker(void *arg)
+{
+    int i = (int) (intptr_t) arg;
+
+    for (;;)
+    {
+        SDL_SemWait(convstart[i]);
+        if (convquit)
+            break;
+        expand_rows(&convbands[i+1]);
+        SDL_SemPost(convdone);
+    } /* for */
+
+    return(0);
+} /* conv_worker */
+
+static void start_conv_threads(void)
+{
+    const char *envr = getenv(BUILD_CONVTHREADS);
+    int want = (envr != NULL) ? atoi(envr) : SDL_GetCPUCount();
+    int i;
+
+    convthreads = 0;
+    want--;  /* the main thread takes a band too */
+    if (want > MAXCONVTHREADS)
+        want = MAXCONVTHREADS;
+    if (want <= 0)
+        return;
+
+    convdone = SDL_CreateSemaphore(0);
+    if (convdone == NULL)
+        return;
+
+    for (i = 0; i < want; i++)
+    {
+        convstart[i] = SDL_CreateSemaphore(0);
+        if (convstart[i] == NULL)
+            break;
+        convthread[i] = SDL_CreateThread(conv_worker, "palexpand", (void *) (intptr_t) i);
+        if (convthread[i] == NULL)
+        {
+            SDL_DestroySemaphore(convstart[i]);
+            break;
+        } /* if */
+        convthreads++;
+    } /* for */
+
+    sdldebug("Palette expansion uses %d worker thread%s.", convthreads,
+             (convthreads == 1) ? "" : "s");
+} /* start_conv_threads */
+
+static void stop_conv_threads(void)
+{
+    int i;
+
+    convquit = 1;
+    for (i = 0; i < convthreads; i++)
+    {
+        SDL_SemPost(convstart[i]);
+        SDL_WaitThread(convthread[i], NULL);
+        SDL_DestroySemaphore(convstart[i]);
+    } /* for */
+
+    if (convdone != NULL)
+    {
+        SDL_DestroySemaphore(convdone);
+        convdone = NULL;
+    } /* if */
+
+    convthreads = -1;
+    convquit = 0;
+} /* stop_conv_threads */
+
+static void expand_frame(Uint8 *dst, int dstpitch)
+{
+    int bands, i;
+
+    if (convthreads < 0)
+        start_conv_threads();
+
+    bands = convthreads + 1;
+    if (bands > (surface->w * surface->h) / MINPIXELSPERBAND)
+        bands = (surface->w * surface->h) / MINPIXELSPERBAND;
+    if (bands > surface->h)
+        bands = surface->h;
+    if (bands < 1)
+        bands = 1;
+
+    for (i = 0; i < bands; i++)
+    {
+        convbands[i].y0 = (surface->h * i) / bands;
+        convbands[i].y1 = (surface->h * (i+1)) / bands;
+        convbands[i].dst = dst;
+        convbands[i].dstpitch = dstpitch;
+    } /* for */
+
+    for (i = 1; i < bands; i++)
+        SDL_SemPost(convstart[i-1]);
+
+    expand_rows(&convbands[0]);
+
+    for (i = 1; i < bands; i++)
+        SDL_SemWait(convdone);
+} /* expand_frame */
+
+
 /* Expand the 8-bit framebuffer through the palette and show it. */
 static void present_framebuffer(void)
 {
-    const Uint8 *src;
     void *texpixels;
     int texpitch;
-    int x, y;
+    Uint64 t0;
 
     if ((surface == NULL) || (texture == NULL))
         return;
@@ -613,14 +770,9 @@ static void present_framebuffer(void)
     if (SDL_LockTexture(texture, NULL, &texpixels, &texpitch) != 0)
         return;
 
-    src = (const Uint8 *) surface->pixels;
-    for (y = 0; y < surface->h; y++)
-    {
-        Uint32 *dst = (Uint32 *) (((Uint8 *) texpixels) + (y * texpitch));
-        for (x = 0; x < surface->w; x++)
-            dst[x] = palette32[src[x]];
-        src += surface->pitch;
-    } /* for */
+    t0 = SDL_GetPerformanceCounter();
+    expand_frame((Uint8 *) texpixels, texpitch);
+    conv_time += SDL_GetPerformanceCounter() - t0;
 
     SDL_UnlockTexture(texture);
 
@@ -2075,6 +2227,7 @@ int VBE_getPalette(long start, long num, char *palettebuffer)
 
 static void shutdown_video(void)
 {
+    stop_conv_threads();
     free_video_buffers();
 
     if (sdlrenderer != NULL)
@@ -2187,8 +2340,13 @@ void _nextpage(void)
     total_render_time = (ticks - last_render_ticks);
     if (total_render_time > 1000)
     {
-        sdldebug("%ld frames/sec at %dx%d.", total_rendered_frames,
-                 surface ? surface->w : 0, surface ? surface->h : 0);
+        sdldebug("%ld frames/sec at %dx%d, palette expansion %.2f ms/frame.",
+                 total_rendered_frames,
+                 surface ? surface->w : 0, surface ? surface->h : 0,
+                 total_rendered_frames ?
+                     (double) conv_time * 1000.0 / (double) SDL_GetPerformanceFrequency()
+                         / (double) total_rendered_frames : 0.0);
+        conv_time = 0;
         total_rendered_frames = 0;
         total_render_time = 1;
         last_render_ticks = ticks;

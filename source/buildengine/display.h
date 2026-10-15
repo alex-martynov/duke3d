@@ -26,6 +26,8 @@
 #define BUILD_GLDUMP         "BUILD_GLDUMP"
 #define BUILD_SDLJOYSTICK    "BUILD_SDLJOYSTICK"
 #define BUILD_RENDERDRIVER   "BUILD_RENDERDRIVER"  /* SDL render driver, e.g. direct3d11 */
+#define BUILD_CONVTHREADS    "BUILD_CONVTHREADS"   /* threads for the palette expansion; 1 = none */
+#define BUILD_VSYNC          "BUILD_VSYNC"         /* 0 turns off vsync */
 
 /* This part sucks. */
 #if (defined __WATCOMC__)
