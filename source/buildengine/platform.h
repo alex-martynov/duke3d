@@ -1,6 +1,9 @@
 #ifndef _INCLUDE_PLATFORM_H_
 #define _INCLUDE_PLATFORM_H_
 
+/* intptr_t: integers that hold addresses (64-bit on x64). */
+#include <stdint.h>
+
 #if (defined PLATFORM_WIN32)
 #include "win32_compat.h"
 #elif (defined PLATFORM_MACOSX)

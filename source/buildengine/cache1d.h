@@ -17,9 +17,10 @@
 #ifndef _INCLUDE_CACHE1D_H_
 #define _INCLUDE_CACHE1D_H_
 
-void initcache(long dacachestart, long dacachesize);
-void allocache (long *newhandle, long newbytes, unsigned char *newlockptr);
-void suckcache (long *suckptr);
+/* cache handles are pointer-sized slots that receive the block address. */
+void initcache(intptr_t dacachestart, long dacachesize);
+void allocache (intptr_t *newhandle, long newbytes, unsigned char *newlockptr);
+void suckcache (intptr_t *suckptr);
 void agecache(void);
 void reportandexit(char *errormessage);
 long initgroupfile(const char *filename);

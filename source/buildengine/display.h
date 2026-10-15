@@ -25,6 +25,7 @@
 #define BUILD_HALLOFMIRRORS  "BUILD_HALLOFMIRRORS"
 #define BUILD_GLDUMP         "BUILD_GLDUMP"
 #define BUILD_SDLJOYSTICK    "BUILD_SDLJOYSTICK"
+#define BUILD_RENDERDRIVER   "BUILD_RENDERDRIVER"  /* SDL render driver, e.g. direct3d11 */
 
 /* This part sucks. */
 #if (defined __WATCOMC__)
@@ -80,7 +81,8 @@ extern long *horizlookup, *horizlookup2, horizycent;
 extern long oxdimen, oviewingrange, oxyaspect;
 extern long curbrightness;
 extern long qsetmode;
-extern long frameplace, pageoffset, ydim16;
+extern intptr_t frameplace;
+extern long pageoffset, ydim16;
 extern char textfont[1024], smalltextfont[1024];
 extern char pow2char[8];
 extern volatile long stereomode, visualpage, activepage, whiteband, blackband;
@@ -126,10 +128,10 @@ int VBE_setPalette(long start, long num, char *palettebuffer);
 int setvesa(long x, long y);
 void uninitvesa(void);
 void setvmode(int mode);
-unsigned char readpixel(long offset);
-void drawpixel(long offset, Uint8 pixel);
-void drawpixels(long offset, Uint16 pixels);
-void drawpixelses(long offset, Uint32 pixelses);
+unsigned char readpixel(intptr_t offset);
+void drawpixel(intptr_t offset, Uint8 pixel);
+void drawpixels(intptr_t offset, Uint16 pixels);
+void drawpixelses(intptr_t offset, Uint32 pixelses);
 void drawpixel16(long offset);
 void fillscreen16 (long input1, long input2, long input3);
 void limitrate(void);

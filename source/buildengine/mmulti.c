@@ -535,10 +535,11 @@ void deinit_network_transport(gcomtype *gcom)
 
 #if PLATFORM_WIN32
 #  include <winsock.h>
+#  include <time.h>
 #  define EAGAIN WSAEWOULDBLOCK
 #  define EWOULDBLOCK WSAEWOULDBLOCK
 #  define ECONNREFUSED WSAECONNRESET
-#  define socklen_t size_t
+#  define socklen_t int
 #  define netstrerror() win32netstrerror()
 #  define neterrno() WSAGetLastError()
 #  define sockettype SOCKET

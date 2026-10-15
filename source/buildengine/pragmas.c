@@ -22,7 +22,7 @@
 
 #define low32(a) ((a&0xffffffff))
 
-unsigned long getkensmessagecrc(long param) {
+unsigned long getkensmessagecrc(intptr_t param) {
     return(0x56c764d4);
 }
 
@@ -63,11 +63,11 @@ void clearbufbyte(void *vpbuffer, int size, long fill_value) {
   case 2: *((unsigned short*)buffer) = fill_value; return;
   case 3: { buffer[2]=buffer[1]=buffer[0] = fill_value;} return;
   default:
-	if ((int)buffer&1) {
+	if ((uintptr_t)buffer&1) {
 		*buffer = fill_value; size--;
         buffer++;
 	}
-	if ((int)buffer&2) {
+	if ((uintptr_t)buffer&2) {
 		*((unsigned short*)buffer) = fill_value; size-=2;
         buffer += 2;
 	}
@@ -124,7 +124,7 @@ void qinterpolatedown16short (long *source, int size, int linum, int linum_inc)
 {
 	if (size == 0) return;
 
-	if ((long)source & 0x2)
+	if ((uintptr_t)source & 0x2)
 	{
         unsigned short *src = (unsigned short *) source;
 		*src = ((linum>>16)&0xffff);

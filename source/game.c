@@ -66,7 +66,9 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #define TIMERUPDATESIZ 32
 
 /* this should be a proper prototype included from a header file */
+#ifndef _MSC_VER
 extern int stricmp(const char *x, const char *y);
+#endif
 
 long cameradist = 0, cameraclock = 0;
 char eightytwofifty = 0;
@@ -2877,7 +2879,7 @@ void displayrooms(short snum,long smoothratio)
         {
             walock[MAXTILES-1] = 254;
             if (waloff[MAXTILES-1] == 0)
-                allocache((long *)&waloff[MAXTILES-1],100*160,&walock[MAXTILES-1]);
+                allocache((intptr_t *)&waloff[MAXTILES-1],100*160,&walock[MAXTILES-1]);
             setviewtotile(MAXTILES-1,100L,160L);
         }
         else if( ( ud.screen_tilting && p->rotscrnang ) || ud.detail==0 )
@@ -5469,7 +5471,7 @@ void animatesprites(long x,long y,short a,long smoothratio)
         {
             if(t4)
             {
-                l = *(long *)(t4+8);
+                l = *SCRIPT_PTR(t4+8);
 
                 switch( l )
                 {
@@ -5517,7 +5519,7 @@ void animatesprites(long x,long y,short a,long smoothratio)
                         break;
                 }
 
-                t->picnum += k + ( *(long *)t4 ) + l * t3;
+                t->picnum += k + ( *SCRIPT_PTR(t4) ) + l * t3;
 
                 if(l > 0) while(tilesizx[t->picnum] == 0 && t->picnum > 0 )
                     t->picnum -= l;       //Hack, for actors

@@ -30,7 +30,9 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #endif
 
 /* this should be a proper prototype included from a header file */
+#ifndef _MSC_VER
 extern int stricmp(const char *x, const char *y);
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -44,7 +46,11 @@ extern int stricmp(const char *x, const char *y);
 // we load this in to get default button and key assignments
 // as well as setting up function mappings
 
+// __SETUP__ also pulls in SETUP.EXE's default bindings, used to write a
+//  fresh duke3d.cfg when there is none.
+#define __SETUP__ 1
 #include "_functio.h"
+#undef __SETUP__
 
 //
 // Sound variables
@@ -590,6 +596,58 @@ void readsavenames(void)
 
 int32 dukever13;
 
+/*
+===================
+=
+= CONFIG_WriteDefaultSetup
+=
+= SETUP.EXE used to create duke3d.cfg. Write one with its defaults instead.
+=
+===================
+*/
+
+static void CONFIG_WriteDefaultSetup( void )
+{
+   FILE *fp;
+   int i;
+
+   fp = fopen(setupfilename, "w");
+   if (fp == NULL)
+      {
+      Error("ReadSetup: %s does not exist and could not be created\n",setupfilename);
+      }
+
+   fprintf(fp, "[Setup]\nSetupVersion = \"1.3D\"\n\n");
+   fprintf(fp, "[Screen Setup]\nScreenMode = 1\nScreenWidth = 640\nScreenHeight = 480\n"
+               "Shadows = 1\nDetail = 1\nTilt = 1\nMessages = 1\nScreenSize = 8\nScreenGamma = 0\nOut = 0\nPassword = \"\"\n\n");
+   fprintf(fp, "[Sound Setup]\nFXDevice = 0\nMusicDevice = 0\nFXVolume = 192\nMusicVolume = 128\n"
+               "SoundToggle = 1\nMusicToggle = 1\nVoiceToggle = 1\nAmbienceToggle = 1\n"
+               "NumVoices = 16\nNumChannels = 2\nNumBits = 16\nMixRate = 44100\nMidiPort = 0x330\nReverseStereo = 0\n\n");
+   fprintf(fp, "[KeyDefinitions]\n");
+   for (i = 0; i < NUMKEYENTRIES; i++)
+      {
+      fprintf(fp, "%s = \"%s\" \"%s\"\n", keydefaults[i*3], keydefaults[i*3+1], keydefaults[i*3+2]);
+      }
+   fprintf(fp, "\n[Controls]\nControllerType = %d\nMouseSensitivity = 32768\nMouseAiming = 0\nGameMouseAiming = 0\nAimingFlag = 0\nMouseAimingFlipped = 0\n",
+           (int) controltype_keyboardandmouse);
+   for (i = 0; i < (int) (sizeof (mousedefaults) / sizeof (mousedefaults[0])); i++)
+      {
+      fprintf(fp, "MouseButton%d = \"%s\"\n", i, mousedefaults[i]);
+      fprintf(fp, "MouseButtonClicked%d = \"%s\"\n", i, mouseclickeddefaults[i]);
+      }
+   for (i = 0; i < (int) (sizeof (mouseanalogdefaults) / sizeof (mouseanalogdefaults[0])); i++)
+      {
+      fprintf(fp, "MouseAnalogAxes%d = \"%s\"\n", i, mouseanalogdefaults[i]);
+      fprintf(fp, "MouseDigitalAxes%d_0 = \"%s\"\n", i, mousedigitaldefaults[i*2]);
+      fprintf(fp, "MouseDigitalAxes%d_1 = \"%s\"\n", i, mousedigitaldefaults[i*2+1]);
+      fprintf(fp, "MouseAnalogScale%d = 65536\n", i);
+      }
+   fprintf(fp, "\n[Comm Setup]\nPlayerName = \"DUKE\"\nRTSName = \"DUKE.RTS\"\n");
+
+   fclose(fp);
+   printf("Created default setup file '%s'.\n", setupfilename);
+}
+
 void CONFIG_ReadSetup( void )
 {
    int32 dummy;
@@ -597,8 +655,7 @@ void CONFIG_ReadSetup( void )
 
    if (!SafeFileExists(setupfilename))
       {
-      Error("ReadSetup: %s does not exist\n"
-            "           Please run SETUP.EXE\n",setupfilename);
+      CONFIG_WriteDefaultSetup();
       }
 
    CONFIG_SetDefaults();

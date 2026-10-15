@@ -25,7 +25,7 @@ typedef long long __int64;
 
 struct find_t
 {
-	long handle;
+	intptr_t handle;
     struct _finddata_t data;
 	char name[MAX_PATH];
 };
@@ -53,7 +53,7 @@ void _dos_getdate(struct dosdate_t *date);
 #ifdef FP_OFF
 #undef FP_OFF
 #endif
-#define FP_OFF(x) ((long) (x))
+#define FP_OFF(x) ((intptr_t) (x))
 
 // 64 megs should be enough for anybody.  :)  --ryan.
 #define Z_AvailHeap() ((64 * 1024) * 1024)
@@ -79,6 +79,11 @@ void _dos_getdate(struct dosdate_t *date);
 #define S_IWGRP 0
 
 #define F_OK 0
+
+/* POSIX mkdir() takes a mode argument; the CRT version doesn't. */
+#include <direct.h>
+#define S_IRWXU 0
+#define mkdir(path, mode) _mkdir(path)
 
 #define HAVE_PRAGMA_PACK 1
 

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>18.0</VCProjectVersion>
+    <ProjectGuid>{6B1E3D0C-2F4A-4C7E-9D3B-D0C0DE3D0001}</ProjectGuid>
+    <RootNamespace>duke3d</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <PlatformToolset>v145</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
+    <UseDebugLibraries>true</UseDebugLibraries>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)'=='Release'" Label="Configuration">
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <!-- vcpkg (manifest mode, vcpkg.json next to this file), using the copy bundled with Visual Studio. -->
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+    <VcpkgRoot Condition="'$(VcpkgRoot)'==''">$(VsInstallRoot)\VC\vcpkg\</VcpkgRoot>
+    <VcpkgInstalledDir>$(MSBuildProjectDirectory)\vcpkg_installed\$(Platform)\</VcpkgInstalledDir>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <Import Project="$(VcpkgRoot)scripts\buildsystems\msbuild\vcpkg.props" Condition="Exists('$(VcpkgRoot)scripts\buildsystems\msbuild\vcpkg.props')" />
+
+  <PropertyGroup>
+    <OutDir>$(MSBuildProjectDirectory)\..\bin\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildProjectDirectory)\..\obj\$(Platform)\$(Configuration)\</IntDir>
+    <TargetName>duke3d</TargetName>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(MSBuildProjectDirectory)\compat;$(MSBuildProjectDirectory);$(MSBuildProjectDirectory)\buildengine;$(VcpkgInstalledDir)$(VcpkgTriplet)\include\SDL2;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>PLATFORM_WIN32;USE_SDL=1;UDP_NETWORKING=1;VOLUMEALL;CONTROLS_CONFIG_MENU=1;SDL_MAIN_HANDLED;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;_WINSOCK_DEPRECATED_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <!-- The code assumes 'char' is unsigned (gcc builds use -funsigned-char). -->
+      <AdditionalOptions>/J %(AdditionalOptions)</AdditionalOptions>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <ConformanceMode>false</ConformanceMode>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <CompileAs>CompileAsC</CompileAs>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>ws2_32.lib;winmm.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <!-- No console window; main() is still the entry point. -->
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <ItemGroup Label="Game">
+    <ClCompile Include="actors.c" />
+    <ClCompile Include="animlib.c" />
+    <ClCompile Include="config.c" />
+    <ClCompile Include="control.c" />
+    <ClCompile Include="dukemusc.c" />
+    <ClCompile Include="game.c" />
+    <ClCompile Include="gamedef.c" />
+    <ClCompile Include="global.c" />
+    <ClCompile Include="keyboard.c" />
+    <ClCompile Include="menues.c" />
+    <ClCompile Include="player.c" />
+    <ClCompile Include="premap.c" />
+    <ClCompile Include="rts.c" />
+    <ClCompile Include="scriplib.c" />
+    <ClCompile Include="sector.c" />
+    <ClCompile Include="sounds.c" />
+  </ItemGroup>
+  <ItemGroup Label="Audiolib">
+    <ClCompile Include="audiolib\dsl.c" />
+    <ClCompile Include="audiolib\fx_man.c">
+      <ObjectFileName>$(IntDir)audiolib_fx_man.obj</ObjectFileName>
+    </ClCompile>
+    <ClCompile Include="audiolib\ll_man.c" />
+    <ClCompile Include="audiolib\multivoc.c" />
+    <ClCompile Include="audiolib\mv_mix.c" />
+    <ClCompile Include="audiolib\mvreverb.c" />
+    <ClCompile Include="audiolib\nodpmi.c" />
+    <ClCompile Include="audiolib\pitch.c" />
+    <ClCompile Include="audiolib\user.c" />
+  </ItemGroup>
+  <ItemGroup Label="Engine">
+    <ClCompile Include="buildengine\a.c" />
+    <ClCompile Include="buildengine\cache1d.c" />
+    <ClCompile Include="buildengine\engine.c" />
+    <ClCompile Include="buildengine\mmulti.c" />
+    <ClCompile Include="buildengine\pragmas.c" />
+    <ClCompile Include="buildengine\sdl_driver.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="compat\SDL_mixer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="vcpkg.json" />
+  </ItemGroup>
+
+  <!-- vcpkg only copies DLLs when the exe relinks; always keep them next to it. -->
+  <Target Name="CopyRuntimeDlls" AfterTargets="Build">
+    <PropertyGroup>
+      <_RuntimeDllDir Condition="'$(Configuration)'=='Debug'">$(VcpkgInstalledDir)$(VcpkgTriplet)\debug\bin\</_RuntimeDllDir>
+      <_RuntimeDllDir Condition="'$(Configuration)'!='Debug'">$(VcpkgInstalledDir)$(VcpkgTriplet)\bin\</_RuntimeDllDir>
+    </PropertyGroup>
+    <ItemGroup>
+      <_RuntimeDll Include="$(_RuntimeDllDir)*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_RuntimeDll)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <Import Project="$(VcpkgRoot)scripts\buildsystems\msbuild\vcpkg.targets" Condition="Exists('$(VcpkgRoot)scripts\buildsystems\msbuild\vcpkg.targets')" />
+</Project>

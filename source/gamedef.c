@@ -473,7 +473,7 @@ char parsecommand(void)
             {
                 getlabel();
                 scriptptr--;
-                labelcode[labelcnt] = (long) scriptptr;
+                labelcode[labelcnt] = SCRIPT_OFFSET(scriptptr);
                 labelcnt++;
 
                 parsing_state = 1;
@@ -618,7 +618,7 @@ char parsecommand(void)
                         break;
                     }
                 if(i == labelcnt)
-                    labelcode[labelcnt++] = (long) scriptptr;
+                    labelcode[labelcnt++] = SCRIPT_OFFSET(scriptptr);
                 for(j=0;j<2;j++)
                 {
                     if(keyword() >= 0) break;
@@ -765,7 +765,7 @@ char parsecommand(void)
                     }
 
                 if(i == labelcnt)
-                    labelcode[labelcnt++] = (long) scriptptr;
+                    labelcode[labelcnt++] = SCRIPT_OFFSET(scriptptr);
 
                 for(j=0;j<3;j++)
                 {
@@ -819,7 +819,7 @@ char parsecommand(void)
                     }
 
                 if(i == labelcnt)
-                    labelcode[labelcnt++] = (long) scriptptr;
+                    labelcode[labelcnt++] = SCRIPT_OFFSET(scriptptr);
 
                 for(j=0;j<5;j++)
                 {
@@ -996,7 +996,7 @@ char parsecommand(void)
                 tempscrptr = scriptptr;
                 scriptptr++; //Leave a spot for the fail location
                 parsecommand();
-                *tempscrptr = (long) scriptptr;
+                *tempscrptr = SCRIPT_OFFSET(scriptptr);
             }
             else
             {
@@ -1077,7 +1077,7 @@ char parsecommand(void)
 
             parsecommand();
 
-            *tempscrptr = (long) scriptptr;
+            *tempscrptr = SCRIPT_OFFSET(scriptptr);
 
             checking_ifelse++;
             return 0;
@@ -1562,7 +1562,7 @@ void loadefs(char *filenam,char *mptr)
     total_lines = 0;
 
     passone(); //Tokenize
-    *script = (long) scriptptr;
+    *script = SCRIPT_OFFSET(scriptptr);
 
     if(warning|error)
         printf("Found %d warning(s), %d error(s).\n",warning,error);
@@ -1726,7 +1726,7 @@ void alterang(short a)
     short aang, angdif, goalang,j;
     long ticselapsed, *moveptr;
 
-    moveptr = (long *)g_t[1];
+    moveptr = SCRIPT_PTR(g_t[1]);
 
     ticselapsed = (g_t[0])&31;
 
@@ -1858,7 +1858,7 @@ void move()
         return;
     }
 
-    moveptr = (long *)g_t[1];
+    moveptr = SCRIPT_PTR(g_t[1]);
 
     if(a&geth) g_sp->xvel += (*moveptr-g_sp->xvel)>>1;
     if(a&getv) g_sp->zvel += ((*(moveptr+1)<<4)-g_sp->zvel)>>1;
@@ -1997,7 +1997,7 @@ void parseifelse(long condition)
     }
     else
     {
-        insptr = (long *) *(insptr+1);
+        insptr = SCRIPT_PTR(*(insptr+1));
         if(*insptr == 10)
         {
             insptr+=2;
@@ -2148,9 +2148,9 @@ char parse(void)
         case 24:
             insptr++;
             g_t[5] = *insptr;
-            g_t[4] = *(long *)(g_t[5]);       // Action
-            g_t[1] = *(long *)(g_t[5]+4);       // move
-            g_sp->hitag = *(long *)(g_t[5]+8);    // Ai
+            g_t[4] = *SCRIPT_PTR(g_t[5]);       // Action
+            g_t[1] = *SCRIPT_PTR(g_t[5]+4);       // move
+            g_sp->hitag = *SCRIPT_PTR(g_t[5]+8);    // Ai
             g_t[0] = g_t[2] = g_t[3] = 0;
             if(g_sp->hitag&random_angle)
                 g_sp->ang = TRAND&2047;
@@ -2177,7 +2177,7 @@ char parse(void)
                 hittype[g_i].timetosleep = SLEEPTIME;
             break;
         case 10:
-            insptr = (long *) *(insptr+1);
+            insptr = SCRIPT_PTR(*(insptr+1));
             break;
         case 100:
             insptr++;
@@ -2530,7 +2530,7 @@ char parse(void)
 
                 tempscrptr = insptr+2;
 
-                insptr = (long *) *(insptr+1);
+                insptr = SCRIPT_PTR(*(insptr+1));
                 while(1) if(parse()) break;
                 insptr = tempscrptr;
             }
@@ -3105,13 +3105,13 @@ void execute(short i,short p,long x)
     if(g_t[4])
     {
         g_sp->lotag += TICSPERFRAME;
-        if(g_sp->lotag > *(long *)(g_t[4]+16) )
+        if(g_sp->lotag > *SCRIPT_PTR(g_t[4]+16) )
         {
             g_t[2]++;
             g_sp->lotag = 0;
-            g_t[3] +=  *(long *)( g_t[4]+12 );
+            g_t[3] +=  *SCRIPT_PTR( g_t[4]+12 );
         }
-        if( klabs(g_t[3]) >= klabs( *(long *)(g_t[4]+4) * *(long *)(g_t[4]+12) ) )
+        if( klabs(g_t[3]) >= klabs( *SCRIPT_PTR(g_t[4]+4) * *SCRIPT_PTR(g_t[4]+12) ) )
             g_t[3] = 0;
     }
 

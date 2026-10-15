@@ -86,9 +86,9 @@ extern void waitforeverybody(void);
 #endif
 
 /* cache1d.c */
-extern void initcache(long dacachestart, long dacachesize);
-extern void allocache(long *newhandle, long newbytes, unsigned char *newlockptr);
-extern void suckcache(long *suckptr);
+extern void initcache(intptr_t dacachestart, long dacachesize);
+extern void allocache(intptr_t *newhandle, long newbytes, unsigned char *newlockptr);
+extern void suckcache(intptr_t *suckptr);
 extern void agecache(void);
 extern void reportandexit(char *errormessage);
 extern long initgroupfile(const char *filename);
@@ -139,10 +139,10 @@ extern void readmousexy(short *x, short *y);
 extern void readmousebstatus(short *bstatus);
 extern void _updateScreenRect(long x, long y, long w, long h);
 extern void _nextpage(void);
-extern unsigned char readpixel(long offset);
-extern void drawpixel(long offset, unsigned char pixel);
-extern void drawpixels(long offset, unsigned short pixels);
-extern void drawpixelses(long offset, unsigned int pixelses);
+extern unsigned char readpixel(intptr_t offset);
+extern void drawpixel(intptr_t offset, unsigned char pixel);
+extern void drawpixels(intptr_t offset, unsigned short pixels);
+extern void drawpixelses(intptr_t offset, unsigned int pixelses);
 extern void setcolor16(int col);
 extern void drawpixel16(long offset);
 extern void fillscreen16(long offset, long color, long blocksize);
@@ -190,7 +190,7 @@ extern void initengine(void);
 extern void uninitengine(void);
 extern void nextpage(void);
 extern void loadtile(short tilenume);
-extern int allocatepermanenttile(short tilenume, long xsiz, long ysiz);
+extern intptr_t allocatepermanenttile(short tilenume, long xsiz, long ysiz);
 extern int loadpics(char *filename);
 extern void qloadkvx(long voxindex, char *filename);
 extern int clipinsidebox(long x, long y, short wallnum, long walldist);

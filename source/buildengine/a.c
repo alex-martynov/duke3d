@@ -7,13 +7,14 @@
 
 #include "platform.h"
 #include "build.h"
+#include "a.h"
 
 #define shrd(a,b,c) (((b)<<(32-(c))) | ((a)>>(c)))
 #define shld(a,b,c) (((b)>>(32-(c))) | ((a)<<(c)))
 
 extern long asm1;
-extern long asm2;
-extern long asm3;
+extern intptr_t asm2;
+extern intptr_t asm3;
 extern long asm4;
 
 long is_vmware_running(void)
@@ -30,8 +31,8 @@ long mmxoverlay(void)
 /* #pragma aux sethlinesizes parm [eax][ebx][ecx] */
 static unsigned char machxbits_al;
 static unsigned char machxbits_bl;
-static long machxbits_ecx;
-void sethlinesizes(long i1, long i2, long i3)
+static intptr_t machxbits_ecx;
+void sethlinesizes(long i1, long i2, intptr_t i3)
 {
     machxbits_al = i1;
     machxbits_bl = i2;
@@ -42,7 +43,7 @@ static unsigned char* pal_eax;
 void setuphlineasm4(long i1, long i2) { }
 void setpalookupaddress(unsigned char *i1) { pal_eax = i1; }
 
-void hlineasm4(long _count, unsigned long unused_source, long _shade, unsigned long _i4, unsigned long _i5, long i6)
+void hlineasm4(long _count, unsigned long unused_source, long _shade, unsigned long _i4, unsigned long _i5, intptr_t i6)
 {
     /* force into registers (probably only useful on PowerPC)... */
     register unsigned char *dest = (unsigned char *) i6;
@@ -73,9 +74,9 @@ void hlineasm4(long _count, unsigned long unused_source, long _shade, unsigned l
 static long rmach_eax;
 static long rmach_ebx;
 static long rmach_ecx;
-static long rmach_edx;
+static intptr_t rmach_edx;  /* palookup address */
 static long rmach_esi;
-void setuprhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
+void setuprhlineasm4(long i1, long i2, long i3, intptr_t i4, long i5, long i6)
 {
     rmach_eax = i1;
     rmach_ebx = i2;
@@ -84,10 +85,10 @@ void setuprhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
     rmach_esi = i5;
 } /* setuprhlineasm4 */
 
-void rhlineasm4(long i1, long i2, long i3, unsigned long i4, unsigned long i5, long i6)
+void rhlineasm4(long i1, intptr_t i2, long i3, unsigned long i4, unsigned long i5, intptr_t i6)
 {
-    unsigned long ebp = i6 - i1;
-    unsigned long rmach6b = ebp-1;
+    uintptr_t ebp = i6 - i1;
+    uintptr_t rmach6b = ebp-1;
 
     if (i1 <= 0) return;
 
@@ -100,7 +101,7 @@ void rhlineasm4(long i1, long i2, long i3, unsigned long i4, unsigned long i5, l
 	    if ((i5 + rmach_ebx) < i5) i2 -= (rmach_ecx+1);
 	    else i2 -= rmach_ecx;
 	    ebp &= rmach_esi;
-	    i1 = ((i1&0xffffff00)|(((unsigned char *)i3)[rmach_edx]));
+	    i1 = ((i1&0xffffff00)|(((unsigned char *)rmach_edx)[i3]));
 	    ((unsigned char *)rmach6b)[i6] = (i1&0xff);
 	    i2 -= ebp;
 	    i6--;
@@ -110,9 +111,9 @@ void rhlineasm4(long i1, long i2, long i3, unsigned long i4, unsigned long i5, l
 static long rmmach_eax;
 static long rmmach_ebx;
 static long rmmach_ecx;
-static long rmmach_edx;
+static intptr_t rmmach_edx;  /* palookup address */
 static long rmmach_esi;
-void setuprmhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
+void setuprmhlineasm4(long i1, long i2, long i3, intptr_t i4, long i5, long i6)
 {
     rmmach_eax = i1;
     rmmach_ebx = i2;
@@ -122,10 +123,10 @@ void setuprmhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
 } /* setuprmhlineasm4 */
 
 /* #pragma aux rmhlineasm4 parm [eax][ebx][ecx][edx][esi][edi] */
-void rmhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
+void rmhlineasm4(long i1, intptr_t i2, long i3, long i4, long i5, intptr_t i6)
 {
-    unsigned long ebp = i6 - i1;
-    unsigned long rmach6b = ebp-1;
+    uintptr_t ebp = i6 - i1;
+    uintptr_t rmach6b = ebp-1;
 
     if (i1 <= 0) return;
 
@@ -139,7 +140,7 @@ void rmhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
 	    else i2 -= rmmach_ecx;
 	    ebp &= rmmach_esi;
 	    if ((i3&0xff) != 255) {
-		    i1 = ((i1&0xffffff00)|(((unsigned char *)i3)[rmmach_edx]));
+		    i1 = ((i1&0xffffff00)|(((unsigned char *)rmmach_edx)[i3]));
 		    ((unsigned char *)rmach6b)[i6] = (i1&0xff);
 	    }
 	    i2 -= ebp;
@@ -149,14 +150,14 @@ void rmhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
 
 
 /* #pragma aux setupqrhlineasm4 parm [eax][ebx][ecx][edx][esi][edi] */
-void setupqrhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
+void setupqrhlineasm4(long i1, long i2, long i3, intptr_t i4, long i5, long i6)
 {
     setuprhlineasm4(i1,i2,i3,i4,i5,i6);
 } /* setupqrhlineasm4 */
 
 
 /* #pragma aux qrhlineasm4 parm [eax][ebx][ecx][edx][esi][edi] */
-void qrhlineasm4(long i1, long i2, long i3, long i4, long i5, long i6)
+void qrhlineasm4(long i1, intptr_t i2, long i3, long i4, long i5, intptr_t i6)
 {
     rhlineasm4(i1,i2,i3,i4,i5,i6);
 } /* qrhlineasm4 */
@@ -169,17 +170,16 @@ void setvlinebpl(long i1)
 } /* setvlinebpl */
 
 /* #pragma aux fixtransluscence parm [eax] */
-static long tmach;
-void fixtransluscence(long i1)
+static intptr_t tmach;  /* transluc table address */
+void fixtransluscence(intptr_t i1)
 {
     tmach = i1;
 } /* fixtransluscence */
 
-long vlineasm1(long i1, long i2, long i3, long i4, long i5, long i6);
 
 /* #pragma aux prevlineasm1 parm [eax][ebx][ecx][edx][esi][edi] */
 static unsigned char mach3_al;
-long prevlineasm1(long i1, long i2, long i3, long i4, long i5, long i6)
+long prevlineasm1(long i1, intptr_t i2, long i3, long i4, intptr_t i5, intptr_t i6)
 {
     unsigned char *source = (unsigned char *)i5;
     unsigned char *dest = (unsigned char *)i6;
@@ -196,7 +196,7 @@ long prevlineasm1(long i1, long i2, long i3, long i4, long i5, long i6)
 } /* prevlineasm1 */
 
 /* #pragma aux vlineasm1 parm [eax][ebx][ecx][edx][esi][edi] */
-long vlineasm1(long vince, long palookupoffse, long i3, long vplce, long bufplce, long i6)
+long vlineasm1(long vince, intptr_t palookupoffse, long i3, long vplce, intptr_t bufplce, intptr_t i6)
 {
     unsigned long temp;
     unsigned char *dest = (unsigned char *)i6;
@@ -223,7 +223,7 @@ void setuptvlineasm(long i1)
 
 /* #pragma aux tvlineasm1 parm [eax][ebx][ecx][edx][esi][edi] */
 static int transrev = 0;
-long tvlineasm1(long i1, long i2, long i3, long i4, long i5, long i6)
+long tvlineasm1(long i1, intptr_t i2, long i3, long i4, intptr_t i5, intptr_t i6)
 {
 	unsigned char *source = (unsigned char *)i5;
 	unsigned char *dest = (unsigned char *)i6;
@@ -251,9 +251,9 @@ long tvlineasm1(long i1, long i2, long i3, long i4, long i5, long i6)
 
 /* #pragma aux setuptvlineasm2 parm [eax][ebx][ecx] */
 static unsigned char tran2shr;
-static unsigned long tran2pal_ebx;
-static unsigned long tran2pal_ecx;
-void setuptvlineasm2(long i1, long i2, long i3)
+static uintptr_t tran2pal_ebx;
+static uintptr_t tran2pal_ecx;
+void setuptvlineasm2(long i1, intptr_t i2, intptr_t i3)
 {
 	tran2shr = (i1&0x1f);
 	tran2pal_ebx = i2;
@@ -261,15 +261,15 @@ void setuptvlineasm2(long i1, long i2, long i3)
 } /* */
 
 /* #pragma aux tvlineasm2 parm [eax][ebx][ecx][edx][esi][edi] */
-void tvlineasm2(unsigned long i1, unsigned long i2, unsigned long i3, unsigned long i4, unsigned long i5, unsigned long i6)
+void tvlineasm2(unsigned long i1, unsigned long i2, uintptr_t i3, uintptr_t i4, unsigned long i5, uintptr_t i6)
 {
 	unsigned long ebp = i1;
 	unsigned long tran2inca = i2;
-	unsigned long tran2incb = asm1;
-	unsigned long tran2bufa = i3;
-	unsigned long tran2bufb = i4;
-	unsigned long tran2edi = asm2;
-	unsigned long tran2edi1 = asm2 + 1;
+	unsigned long tran2incb = (unsigned long) asm1;
+	uintptr_t tran2bufa = i3;
+	uintptr_t tran2bufb = i4;
+	uintptr_t tran2edi = asm2;   /* address of the last row */
+	uintptr_t tran2edi1 = asm2 + 1;
 
 	i6 -= asm2;
 
@@ -278,7 +278,7 @@ void tvlineasm2(unsigned long i1, unsigned long i2, unsigned long i3, unsigned l
 		i2 = ebp >> tran2shr;
 		i5 += tran2inca;
 		ebp += tran2incb;
-		i3 = ((unsigned char *)tran2bufa)[i1];
+		i3 = ((unsigned char *)tran2bufa)[i1];  /* i3/i4 become texels */
 		i4 = ((unsigned char *)tran2bufb)[i2];
 		if (i3 == 255) { // skipdraw1
 			if (i4 != 255) { // skipdraw3
@@ -319,7 +319,7 @@ void tvlineasm2(unsigned long i1, unsigned long i2, unsigned long i3, unsigned l
 
 /* #pragma aux mvlineasm1 parm [eax][ebx][ecx][edx][esi][edi] */
 static unsigned char machmv;
-long mvlineasm1(long vince, long palookupoffse, long i3, long vplce, long bufplce, long i6)
+long mvlineasm1(long vince, intptr_t palookupoffse, long i3, long vplce, intptr_t bufplce, intptr_t i6)
 {
     unsigned long temp;
     unsigned char *dest = (unsigned char *)i6;
@@ -342,7 +342,8 @@ void setupvlineasm(long i1)
     mach3_al = (i1&0x1f);
 } /* setupvlineasm */
 
-extern long vplce[4], vince[4], palookupoffse[4], bufplce[4];
+extern long vplce[4], vince[4];
+extern intptr_t palookupoffse[4], bufplce[4];
 
 #if HAVE_POWERPC
 /* About 25% faster than the scalar version on my 12" Powerbook. --ryan. */
@@ -390,7 +391,7 @@ static void vlineasm4_altivec(long i1, long i2)
 #endif
 
 /* #pragma aux vlineasm4 parm [ecx][edi] modify [eax ebx ecx edx esi edi] */
-void vlineasm4(long i1, long i2)
+void vlineasm4(long i1, intptr_t i2)
 {
 #if HAVE_POWERPC
     if (has_altivec)
@@ -400,8 +401,8 @@ void vlineasm4(long i1, long i2)
     {
         int i;
         unsigned long temp;
-        unsigned long index = (i2 + ylookup[i1]);
-        unsigned char *dest = (unsigned char*)(-ylookup[i1]);
+        uintptr_t index = (i2 + ylookup[i1]);
+        unsigned char *dest = (unsigned char*)(intptr_t)(-ylookup[i1]);
         do {
             for (i = 0; i < 4; i++)
             {
@@ -411,7 +412,7 @@ void vlineasm4(long i1, long i2)
 	            vplce[i] += vince[i];
             }
             dest += fixchain;
-        } while (((unsigned)dest - fixchain) < ((unsigned)dest));
+        } while (((uintptr_t)dest - fixchain) < ((uintptr_t)dest));
     }
 } /* vlineasm4 */
 
@@ -422,12 +423,12 @@ void setupmvlineasm(long i1)
 } /* setupmvlineasm */
 
 /* #pragma aux mvlineasm4 parm [ecx][edi] modify [eax ebx ecx edx esi edi] */
-void mvlineasm4(long i1, long i2)
+void mvlineasm4(long i1, intptr_t i2)
 {
     int i;
     unsigned long temp;
-    unsigned long index = (i2 + ylookup[i1]);
-    unsigned char *dest = (unsigned char*)(-ylookup[i1]);
+    uintptr_t index = (i2 + ylookup[i1]);
+    unsigned char *dest = (unsigned char*)(intptr_t)(-ylookup[i1]);
     do {
         for (i = 0; i < 4; i++)
         {
@@ -438,16 +439,16 @@ void mvlineasm4(long i1, long i2)
 	    vplce[i] += vince[i];
         }
         dest += fixchain;
-    } while (((unsigned)dest - fixchain) < ((unsigned)dest));
+    } while (((uintptr_t)dest - fixchain) < ((uintptr_t)dest));
 } /* mvlineasm4 */
 
 /* #pragma aux setupspritevline parm [eax][ebx][ecx][edx][esi][edi] */
-static long spal_eax;
+static intptr_t spal_eax;  /* palookup address */
 static long smach_eax;
 static long smach2_eax;
 static long smach5_eax;
 static long smach_ecx;
-void setupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
+void setupspritevline(intptr_t i1, long i2, long i3, long i4, long i5, long i6)
 {
     spal_eax = i1;
     smach_eax = (i5<<16);
@@ -457,7 +458,7 @@ void setupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
 } /* setupspritevline */
 
 /* #pragma aux spritevline parm [eax][ebx][ecx][edx][esi][edi] */
-void spritevline(long i1, unsigned long i2, long i3, unsigned long i4, long i5, long i6)
+void spritevline(long i1, unsigned long i2, long i3, unsigned long i4, intptr_t i5, intptr_t i6)
 {
     unsigned char *source = (unsigned char *)i5;
     unsigned char *dest = (unsigned char *)i6;
@@ -485,12 +486,12 @@ dumblabel2:
 } /* spritevline */
 
 /* #pragma aux msetupspritevline parm [eax][ebx][ecx][edx][esi][edi] */
-static long mspal_eax;
+static intptr_t mspal_eax;  /* palookup address */
 static long msmach_eax;
 static long msmach2_eax;
 static long msmach5_eax;
 static long msmach_ecx;
-void msetupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
+void msetupspritevline(intptr_t i1, long i2, long i3, long i4, long i5, long i6)
 {
     mspal_eax = i1;
     msmach_eax = (i5<<16);
@@ -500,7 +501,7 @@ void msetupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
 } /* msetupspritevline */
 
 /* #pragma aux mspritevline parm [eax][ebx][ecx][edx][esi][edi] */
-void mspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
+void mspritevline(long i1, long i2, long i3, long i4, intptr_t i5, intptr_t i6)
 {
     unsigned char *source = (unsigned char *)i5;
     unsigned char *dest = (unsigned char *)i6;
@@ -531,12 +532,12 @@ msdumblabel2:
 } /* mspritevline */
 
 /* #pragma aux tsetupspritevline parm [eax][ebx][ecx][edx][esi][edi] */
-unsigned long tspal;
+uintptr_t tspal;  /* palookup address */
 unsigned long tsmach_eax1;
 unsigned long tsmach_eax2;
 unsigned long tsmach_eax3;
 unsigned long tsmach_ecx;
-void tsetupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
+void tsetupspritevline(intptr_t i1, long i2, long i3, long i4, long i5, long i6)
 {
 	tspal = i1;
 	tsmach_eax1 = i5 << 16;
@@ -546,7 +547,7 @@ void tsetupspritevline(long i1, long i2, long i3, long i4, long i5, long i6)
 } /* tsetupspritevline */
 
 /* #pragma aux tspritevline parm [eax][ebx][ecx][edx][esi][edi] */
-void tspritevline(long i1, long i2, long i3, unsigned long i4, long i5, long i6)
+void tspritevline(long i1, long i2, long i3, unsigned long i4, intptr_t i5, intptr_t i6)
 {
 	while (i3)
 	{
@@ -576,24 +577,23 @@ void tspritevline(long i1, long i2, long i3, unsigned long i4, long i5, long i6)
 } /* tspritevline */
 
 /* #pragma aux mhline parm [eax][ebx][ecx][edx][esi][edi] */
-static long mmach_eax;
-static long mmach_asm3;
+static intptr_t mmach_eax;   /* texture address */
+static intptr_t mmach_asm3;  /* palookup address */
 static long mmach_asm1;
 static long mmach_asm2;
-void mhlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, long i6);
-void mhline(long i1, long i2, long i3, long i4, long i5, long i6)
+void mhline(intptr_t i1, long i2, long i3, long i4, long i5, intptr_t i6)
 {
     mmach_eax = i1;
     mmach_asm3 = asm3;
-    mmach_asm1 = asm1;
-    mmach_asm2 = asm2;
-    mhlineskipmodify(asm2,i2,i3,i4,i5,i6);
+    mmach_asm1 = (long) asm1;
+    mmach_asm2 = (long) asm2;
+    mhlineskipmodify((long) asm2,i2,i3,i4,i5,i6);
 } /* mhline */
 
 /* #pragma aux mhlineskipmodify parm [eax][ebx][ecx][edx][esi][edi] */
 static unsigned char mshift_al = 26;
 static unsigned char mshift_bl = 6;
-void mhlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, long i6)
+void mhlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, intptr_t i6)
 {
     unsigned long ebx;
     int counter = (i3>>16);
@@ -621,24 +621,23 @@ void msethlineshift(long i1, long i2)
 } /* msethlineshift */
 
 /* #pragma aux thline parm [eax][ebx][ecx][edx][esi][edi] */
-static long tmach_eax;
-static long tmach_asm3;
+static intptr_t tmach_eax;   /* texture address */
+static intptr_t tmach_asm3;  /* palookup address */
 static long tmach_asm1;
 static long tmach_asm2;
-void thlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, long i6);
-void thline(long i1, long i2, long i3, long i4, long i5, long i6)
+void thline(intptr_t i1, long i2, long i3, long i4, long i5, intptr_t i6)
 {
     tmach_eax = i1;
     tmach_asm3 = asm3;
-    tmach_asm1 = asm1;
-    tmach_asm2 = asm2;
-    thlineskipmodify(asm2,i2,i3,i4,i5,i6);
+    tmach_asm1 = (long) asm1;
+    tmach_asm2 = (long) asm2;
+    thlineskipmodify((long) asm2,i2,i3,i4,i5,i6);
 } /* thline */
 
 /* #pragma aux thlineskipmodify parm [eax][ebx][ecx][edx][esi][edi] */
 static unsigned char tshift_al = 26;
 static unsigned char tshift_bl = 6;
-void thlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, long i6)
+void thlineskipmodify(long i1, unsigned long i2, unsigned long i3, long i4, long i5, intptr_t i6)
 {
     unsigned long ebx;
     int counter = (i3>>16);
@@ -671,14 +670,14 @@ void tsethlineshift(long i1, long i2)
 } /* tsethlineshift */
 
 /* #pragma aux setupslopevlin parm [eax][ebx][ecx] modify [edx] */
-static long slopemach_ebx;
+static intptr_t slopemach_ebx;  /* texture address */
 static long slopemach_ecx;
 static long slopemach_edx;
 static unsigned char slopemach_ah1;
 static unsigned char slopemach_ah2;
 static float asm2_f;
 typedef union { unsigned int i; float f; } bitwisef2i;
-void setupslopevlin(long i1, long i2, long i3)
+void setupslopevlin(long i1, intptr_t i2, long i3)
 {
     bitwisef2i c;
     slopemach_ebx = i2;
@@ -698,10 +697,11 @@ extern long fpuasm;
 #define high32(a) ((int)(((__int64)a&(__int64)0xffffffff00000000)>>32))
 
 /* #pragma aux slopevlin parm [eax][ebx][ecx][edx][esi][edi] */
-void slopevlin(long i1, unsigned long i2, long i3, long i4, long i5, long i6)
+void slopevlin(intptr_t i1, unsigned long i2, intptr_t i3, long i4, long i5, long i6)
 {
     bitwisef2i c;
     unsigned long ecx,eax,ebx,edx,esi,edi;
+    uintptr_t pal;  /* palookup address read from slopalookup[] */
     float a = (float) asm3 + asm2_f;
     i1 -= slopemach_ecx;
     esi = i5 + low32((__int64)globalx3 * (__int64)(i2<<3));
@@ -742,10 +742,10 @@ void slopevlin(long i1, unsigned long i2, long i3, long i4, long i5, long i6)
 		    ebx &= slopemach_edx;
 		    edi += eax;
 		    i1 += slopemach_ecx;
-		    edx = ((edx&0xffffff00)|((((unsigned char *)(ebx+edx))[slopemach_ebx])));
-		    ebx = *((unsigned long*)i3); // register trickery
-		    i3 -= 4;
-		    eax = ((eax&0xffffff00)|(*((unsigned char *)(ebx+edx))));
+		    edx = ((edx&0xffffff00)|((((unsigned char *)slopemach_ebx)[ebx+edx])));
+		    pal = *((intptr_t*)i3); // register trickery
+		    i3 -= sizeof (intptr_t);
+		    eax = ((eax&0xffffff00)|(((unsigned char *)pal)[edx]));
 		    ebx = esi;
 		    *((unsigned char *)i1) = (eax&0xff);
 		    edx = edi;
@@ -769,7 +769,7 @@ void settransreverse(void)
 } /* settransreverse */
 
 /* #pragma aux setupdrawslab parm [eax][ebx] */
-long setupdrawslab(long i1, long i2)
+long setupdrawslab(long i1, intptr_t i2)
 {
     long retval = 0;
     /*
@@ -804,7 +804,7 @@ _asm_setupdrawslab:
 } /* setupdrawslab */
 
 /* #pragma aux drawslab parm [eax][ebx][ecx][edx][esi][edi] */
-long drawslab(long i1, long i2, long i3, long i4, long i5, long i6)
+long drawslab(long i1, long i2, long i3, long i4, intptr_t i5, intptr_t i6)
 {
     long retval = 0;
     /*

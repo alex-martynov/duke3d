@@ -4911,7 +4911,7 @@ void moveexplosions(void)  // STATNUM 5
 
 void moveeffectors(void)   //STATNUM 3
 {
-    long q=0l, l=0l, m=0l, x=0l, st=0l, j=0l, *t=NULL;
+    long q=0l, l=0l, m=0l, x=0l, st=0l, j=0l, *t=NULL, *zptr=NULL;
     short i=0, k=0, nexti=0, nextk=0, p=0, sh=0, nextj=0;
     spritetype *s=NULL;
     sectortype *sc=NULL;
@@ -6470,23 +6470,23 @@ void moveeffectors(void)   //STATNUM 3
                 if( t[0] == 0 ) break;
 
                 if( s->ang == 1536 )
-                    l = (long) &sc->ceilingz;
+                    zptr = &sc->ceilingz;
                 else
-                    l = (long) &sc->floorz;
+                    zptr = &sc->floorz;
 
                 if( t[0] == 1 ) //Decide if the s->sectnum should go up or down
                 {
-                    s->zvel = ksgn(s->z-*(long *)l) * (SP<<4);
+                    s->zvel = ksgn(s->z-*zptr) * (SP<<4);
                     t[0]++;
                 }
 
                 if( sc->extra == 0 )
                 {
-                    *(long *)l += s->zvel;
+                    *zptr += s->zvel;
 
-                    if(klabs(*(long *)l-s->z) < 1024)
+                    if(klabs(*zptr-s->z) < 1024)
                     {
-                        *(long *)l = s->z;
+                        *zptr = s->z;
                         KILLIT(i); //All done
                     }
                 }

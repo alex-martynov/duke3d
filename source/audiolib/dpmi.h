@@ -29,6 +29,8 @@ Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 **********************************************************************/
 
 #ifndef __DPMI_H
+#include <stdint.h>
+
 #define __DPMI_H
 
 enum DPMI_Errors
@@ -62,8 +64,8 @@ typedef struct
 unsigned long DPMI_GetRealModeVector( int num );
 void DPMI_SetRealModeVector( int num, unsigned long vector );
 int  DPMI_CallRealModeFunction( dpmi_regs *callregs );
-int  DPMI_GetDOSMemory( void **ptr, int *descriptor, unsigned length );
-int  DPMI_FreeDOSMemory( int descriptor );
+int  DPMI_GetDOSMemory( void **ptr, intptr_t *descriptor, unsigned length );
+int  DPMI_FreeDOSMemory( intptr_t descriptor );
 int  DPMI_LockMemory( void *address, unsigned length );
 int  DPMI_LockMemoryRegion( void *start, void *end );
 int  DPMI_UnlockMemory( void *address, unsigned length );

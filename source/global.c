@@ -275,7 +275,7 @@ void FixFilePath(char *filename)
 #elif PLATFORM_WIN32
 int _dos_findfirst(char *filename, int x, struct find_t *f)
 {
-    long rc = _findfirst(filename, &f->data);
+    intptr_t rc = _findfirst(filename, &f->data);
     f->handle = rc;
     if (rc != -1)
     {

@@ -107,7 +107,7 @@ static int MV_BuffShift;
 
 static int MV_TotalMemory;
 
-static int   MV_BufferDescriptor;
+static intptr_t MV_BufferDescriptor;
 static int   MV_BufferEmpty[ NumberOfBuffers ];
 char *MV_MixBuffer[ NumberOfBuffers + 1 ];
 
@@ -848,17 +848,17 @@ playbackstatus MV_GetNextVOCBlock
 
       if ( voice->LoopEnd != NULL )
          {
-         if ( blocklength > ( unsigned long )voice->LoopEnd )
+         if ( blocklength > ( uintptr_t )voice->LoopEnd )
             {
-            blocklength = ( unsigned long )voice->LoopEnd;
+            blocklength = ( unsigned long )( uintptr_t )voice->LoopEnd;
             }
          else
             {
-            voice->LoopEnd = ( char * )blocklength;
+            voice->LoopEnd = ( char * )( uintptr_t )blocklength;
             }
 
-         voice->LoopStart = voice->sound + ( unsigned long )voice->LoopStart;
-         voice->LoopEnd   = voice->sound + ( unsigned long )voice->LoopEnd;
+         voice->LoopStart = voice->sound + ( uintptr_t )voice->LoopStart;
+         voice->LoopEnd   = voice->sound + ( uintptr_t )voice->LoopEnd;
          voice->LoopSize  = voice->LoopEnd - voice->LoopStart;
          }
 
@@ -2759,8 +2759,8 @@ int MV_PlayLoopedVOC
    voice->prev        = NULL;
    voice->priority    = priority;
    voice->callbackval = callbackval;
-   voice->LoopStart   = ( char * )loopstart;
-   voice->LoopEnd     = ( char * )loopend;
+   voice->LoopStart   = ( char * )( intptr_t )loopstart;
+   voice->LoopEnd     = ( char * )( intptr_t )loopend;
    voice->LoopSize    = loopend - loopstart + 1;
 
    if ( loopstart < 0 )

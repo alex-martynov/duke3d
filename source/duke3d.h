@@ -471,6 +471,15 @@ extern char sounds[NUM_SOUNDS][14];
 extern long script[MAXSCRIPTSIZE],*scriptptr,*insptr,*labelcode,labelcnt;
 extern char *label,*textptr,error,warning,killit_flag;
 extern long *actorscrptr[MAXTILES],*parsing_actor;
+
+/*
+ * Script addresses (jump targets, states, actions, moves, ais) are kept in
+ *  the 32-bit script cells and actor temp vars as byte offsets from
+ *  &script[0], which also is how savegames store them. Offset 0 is never a
+ *  target (script[0] holds the script size), so 0 still means "none".
+ */
+#define SCRIPT_OFFSET(p) ((long)((char *)(p) - (char *)script))
+#define SCRIPT_PTR(off)  ((long *)((char *)script + (off)))
 extern char actortype[MAXTILES];
 extern char *music_pointer;
 
@@ -506,7 +515,8 @@ extern short screenpeek;
 
 extern int current_menu;
 extern long tempwallptr,animatecnt;
-extern long lockclock,frameplace;
+extern long lockclock;
+extern intptr_t frameplace;
 extern char display_mirror,loadfromgrouponly,rtsplaying;
 
 extern long movefifoend[MAXPLAYERS], groupfile;
@@ -524,7 +534,7 @@ extern short mirrorwall[64], mirrorsector[64], mirrorcnt;
 
 #define NUMKEYS 19
 
-extern long frameplace, chainplace, chainnumpages;
+extern long chainplace, chainnumpages;
 extern volatile long checksume;
 
 #include "funct.h"

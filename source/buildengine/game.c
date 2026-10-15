@@ -353,7 +353,8 @@ static short screenpeek = 0, oldmousebstatus = 0, brightness = 0;
 static short screensize, screensizeflag = 0;
 static short neartagsector, neartagwall, neartagsprite;
 static long lockclock, neartagdist, neartaghitdist;
-extern long frameplace, pageoffset, ydim16;
+extern intptr_t frameplace;
+extern long pageoffset, ydim16;
 static long globhiz, globloz, globhihit, globlohit;
 /* volatile long stereomode = 0; */
 extern long stereowidth, stereopixelwidth;

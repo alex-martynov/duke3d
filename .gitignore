@@ -1,0 +1,5 @@
+bin/
+obj/
+source/vcpkg_installed/
+*.log
+run/

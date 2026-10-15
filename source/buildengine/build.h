@@ -177,7 +177,8 @@ EXTERN short nextspritesect[MAXSPRITES], nextspritestat[MAXSPRITES];
 
 EXTERN short tilesizx[MAXTILES], tilesizy[MAXTILES];
 EXTERN char walock[MAXTILES];
-EXTERN long numtiles, picanm[MAXTILES], waloff[MAXTILES];
+EXTERN long numtiles, picanm[MAXTILES];
+EXTERN intptr_t waloff[MAXTILES];  /* tile data addresses */
 
     /*
 	 * These variables are for auto-mapping with the draw2dscreen function.

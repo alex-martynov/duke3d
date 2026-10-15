@@ -29,7 +29,9 @@ Prepared for public release: 03/21/2003 - Charlie Wiederhold, 3D Realms
 #include "animlib.h"
 
 /* this should be a proper prototype included from a header file */
+#ifndef _MSC_VER
 extern int stricmp(const char *x, const char *y);
+#endif
 
 extern short inputloc;
 extern int recfilep;
@@ -120,7 +122,7 @@ void cmenu(short cm)
 }
 
 
-void savetemp(char *fn,long daptr,long dasiz)
+void savetemp(char *fn,intptr_t daptr,long dasiz)
 {
     int fp;
 
@@ -197,6 +199,7 @@ int loadplayer(signed char spot)
      char mpfn[] = "gameA_00.sav";
      char fullname[128];
      char *fnptr, scriptptrs[MAXSCRIPTSIZE];
+     static long offsets[MAXTILES];  /* pointers as stored on disk */
      long fil, bv, i, j, x;
      int32 nump;
 
@@ -305,6 +308,8 @@ int loadplayer(signed char spot)
          kdfread(&numcyclers,sizeof(numcyclers),1,fil);
          kdfread(&cyclers[0][0],12,MAXCYCLERS,fil);
      kdfread(ps,sizeof(ps),1,fil);
+     /* the saved palette pointer is from another run (ASLR); repoint it. */
+     for(i=0;i<MAXPLAYERS;i++) ps[i].palette = (char *) &palette[0];
      kdfread(po,sizeof(po),1,fil);
          kdfread(&numanimwalls,sizeof(numanimwalls),1,fil);
          kdfread(&animwall,sizeof(animwall),1,fil);
@@ -325,33 +330,16 @@ int loadplayer(signed char spot)
      kdfread(&cloudx[0],sizeof(short)<<7,1,fil);
      kdfread(&cloudy[0],sizeof(short)<<7,1,fil);
 
+     /* script addresses are saved as offsets, the same as in memory. */
      kdfread(&scriptptrs[0],1,MAXSCRIPTSIZE,fil);
      kdfread(&script[0],4,MAXSCRIPTSIZE,fil);
-     for(i=0;i<MAXSCRIPTSIZE;i++)
-        if( scriptptrs[i] )
-     {
-         j = (long)script[i]+(long)&script[0];
-         script[i] = j;
-     }
 
-     kdfread(&actorscrptr[0],4,MAXTILES,fil);
+     kdfread(&offsets[0],4,MAXTILES,fil);
      for(i=0;i<MAXTILES;i++)
-         if(actorscrptr[i])
-     {
-        j = (long)actorscrptr[i]+(long)&script[0];
-        actorscrptr[i] = (long *)j;
-     }
+         actorscrptr[i] = (offsets[i]) ? SCRIPT_PTR(offsets[i]) : NULL;
 
      kdfread(&scriptptrs[0],1,MAXSPRITES,fil);
      kdfread(&hittype[0],sizeof(struct weaponhit),MAXSPRITES,fil);
-
-     for(i=0;i<MAXSPRITES;i++)
-     {
-        j = (long)(&script[0]);
-        if( scriptptrs[i]&1 ) T2 += j;
-        if( scriptptrs[i]&2 ) T5 += j;
-        if( scriptptrs[i]&4 ) T6 += j;
-     }
 
          kdfread(&lockclock,sizeof(lockclock),1,fil);
      kdfread(&pskybits,sizeof(pskybits),1,fil);
@@ -359,8 +347,8 @@ int loadplayer(signed char spot)
 
          kdfread(&animatecnt,sizeof(animatecnt),1,fil);
          kdfread(&animatesect[0],2,MAXANIMATES,fil);
-         kdfread(&animateptr[0],4,MAXANIMATES,fil);
-     for(i = animatecnt-1;i>=0;i--) animateptr[i] = (long *)((long)animateptr[i]+(long)(&sector[0]));
+         kdfread(&offsets[0],4,MAXANIMATES,fil);
+     for(i = animatecnt-1;i>=0;i--) animateptr[i] = (long *)((char *)&sector[0] + offsets[i]);
          kdfread(&animategoal[0],4,MAXANIMATES,fil);
          kdfread(&animatevel[0],4,MAXANIMATES,fil);
 
@@ -519,6 +507,7 @@ int saveplayer(signed char spot)
      char mpfn[] = "gameA_00.sav";
      char fullname[128];
      char *fnptr,scriptptrs[MAXSCRIPTSIZE];
+     static long offsets[MAXTILES];  /* pointers as stored on disk */
      FILE *fil;
      long bv = BYTEVERSION;
 
@@ -601,90 +590,38 @@ int saveplayer(signed char spot)
      dfwrite(&cloudx[0],sizeof(short)<<7,1,fil);
      dfwrite(&cloudy[0],sizeof(short)<<7,1,fil);
 
-     for(i=0;i<MAXSCRIPTSIZE;i++)
-     {
-          if( (long)script[i] >= (long)(&script[0]) && (long)script[i] < (long)(&script[MAXSCRIPTSIZE]) )
-          {
-                scriptptrs[i] = 1;
-                j = (long)script[i] - (long)&script[0];
-                script[i] = j;
-          }
-          else scriptptrs[i] = 0;
-     }
-
+     /*
+      * Script addresses are already offsets in memory. scriptptrs[] only
+      *  matters to old builds that relocated on load; it is not read back.
+      */
+     memset(&scriptptrs[0],0,MAXSCRIPTSIZE);
      dfwrite(&scriptptrs[0],1,MAXSCRIPTSIZE,fil);
      dfwrite(&script[0],4,MAXSCRIPTSIZE,fil);
 
-     for(i=0;i<MAXSCRIPTSIZE;i++)
-        if( scriptptrs[i] )
-     {
-        j = script[i]+(long)&script[0];
-        script[i] = j;
-     }
-
      for(i=0;i<MAXTILES;i++)
-         if(actorscrptr[i])
-     {
-        j = (long)actorscrptr[i]-(long)&script[0];
-        actorscrptr[i] = (long *)j;
-     }
-     dfwrite(&actorscrptr[0],4,MAXTILES,fil);
-     for(i=0;i<MAXTILES;i++)
-         if(actorscrptr[i])
-     {
-         j = (long)actorscrptr[i]+(long)&script[0];
-         actorscrptr[i] = (long *)j;
-     }
+         offsets[i] = (actorscrptr[i]) ? SCRIPT_OFFSET(actorscrptr[i]) : 0;
+     dfwrite(&offsets[0],4,MAXTILES,fil);
 
      for(i=0;i<MAXSPRITES;i++)
      {
         scriptptrs[i] = 0;
-
         if(actorscrptr[PN] == 0) continue;
-
-        j = (long)&script[0];
-
-        if(T2 >= j && T2 < (long)(&script[MAXSCRIPTSIZE]) )
-        {
-            scriptptrs[i] |= 1;
-            T2 -= j;
-        }
-        if(T5 >= j && T5 < (long)(&script[MAXSCRIPTSIZE]) )
-        {
-            scriptptrs[i] |= 2;
-            T5 -= j;
-        }
-        if(T6 >= j && T6 < (long)(&script[MAXSCRIPTSIZE]) )
-        {
-            scriptptrs[i] |= 4;
-            T6 -= j;
-        }
-    }
+        if(T2) scriptptrs[i] |= 1;
+        if(T5) scriptptrs[i] |= 2;
+        if(T6) scriptptrs[i] |= 4;
+     }
 
     dfwrite(&scriptptrs[0],1,MAXSPRITES,fil);
     dfwrite(&hittype[0],sizeof(struct weaponhit),MAXSPRITES,fil);
-
-    for(i=0;i<MAXSPRITES;i++)
-    {
-        if(actorscrptr[PN] == 0) continue;
-        j = (long)&script[0];
-
-        if(scriptptrs[i]&1)
-            T2 += j;
-        if(scriptptrs[i]&2)
-            T5 += j;
-        if(scriptptrs[i]&4)
-            T6 += j;
-    }
 
          dfwrite(&lockclock,sizeof(lockclock),1,fil);
      dfwrite(&pskybits,sizeof(pskybits),1,fil);
      dfwrite(&pskyoff[0],sizeof(pskyoff[0]),MAXPSKYTILES,fil);
          dfwrite(&animatecnt,sizeof(animatecnt),1,fil);
          dfwrite(&animatesect[0],2,MAXANIMATES,fil);
-         for(i = animatecnt-1;i>=0;i--) animateptr[i] = (long *)((long)animateptr[i]-(long)(&sector[0]));
-         dfwrite(&animateptr[0],4,MAXANIMATES,fil);
-         for(i = animatecnt-1;i>=0;i--) animateptr[i] = (long *)((long)animateptr[i]+(long)(&sector[0]));
+         memset(&offsets[0],0,MAXANIMATES*sizeof(offsets[0]));
+         for(i = animatecnt-1;i>=0;i--) offsets[i] = (long)((char *)animateptr[i] - (char *)&sector[0]);
+         dfwrite(&offsets[0],4,MAXANIMATES,fil);
          dfwrite(&animategoal[0],4,MAXANIMATES,fil);
          dfwrite(&animatevel[0],4,MAXANIMATES,fil);
 
@@ -4004,7 +3941,7 @@ void playanm(char *fn,char t)
     walock[MAXTILES-3-t] = 219+t;
 
     if(anim == 0 || lastanimhack != (MAXTILES-3-t))
-        allocache((long *)&anim,length+sizeof(anim_t),&walock[MAXTILES-3-t]);
+        allocache((intptr_t *)&anim,length+sizeof(anim_t),&walock[MAXTILES-3-t]);
 
     animbuf = (char *)(FP_OFF(anim)+sizeof(anim_t));
 

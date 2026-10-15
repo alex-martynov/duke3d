@@ -12,52 +12,61 @@
 #error Do not include this header with Watcom C.
 #endif
 
+#include <stdint.h>
+
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/*
+ * Arguments typed intptr_t carry addresses (framebuffer, texture or
+ *  palette pointers); the rest are 32-bit fixed-point values whose
+ *  wraparound the inner loops depend on.
+ */
 long mmxoverlay(void);
-long sethlinesizes(long,long,long);
-long setpalookupaddress(char *);
-long setuphlineasm4(long,long);
-long hlineasm4(long,long,long,long,long,long);
-long setuprhlineasm4(long,long,long,long,long,long);
-long rhlineasm4(long,long,long,long,long,long);
-long setuprmhlineasm4(long,long,long,long,long,long);
-long rmhlineasm4(long,long,long,long,long,long);
-long setupqrhlineasm4(long,long,long,long,long,long);
-long qrhlineasm4(long,long,long,long,long,long);
-long setvlinebpl(long);
-long fixtransluscence(long);
-long prevlineasm1(long,long,long,long,long,long);
-long vlineasm1(long,long,long,long,long,long);
-long setuptvlineasm(long);
-long tvlineasm1(long,long,long,long,long,long);
-long setuptvlineasm2(long,long,long);
-long tvlineasm2(long,long,long,long,long,long);
-long mvlineasm1(long,long,long,long,long,long);
-long setupvlineasm(long);
-long vlineasm4(long,long);
-long setupmvlineasm(long);
-long mvlineasm4(long,long);
-void setupspritevline(long,long,long,long,long,long);
-void spritevline(long,long,long,long,long,long);
-void msetupspritevline(long,long,long,long,long,long);
-void mspritevline(long,long,long,long,long,long);
-void tsetupspritevline(long,long,long,long,long,long);
-void tspritevline(long,long,long,long,long,long);
-long mhline(long,long,long,long,long,long);
-long mhlineskipmodify(long,long,long,long,long,long);
-long msethlineshift(long,long);
-long thline(long,long,long,long,long,long);
-long thlineskipmodify(long,long,long,long,long,long);
-long tsethlineshift(long,long);
-long setupslopevlin(long,long,long);
-long slopevlin(long,long,long,long,long,long);
-long settransnormal(void);
-long settransreverse(void);
-long setupdrawslab(long,long);
-long drawslab(long,long,long,long,long,long);
+void sethlinesizes(long,long,intptr_t);
+void setpalookupaddress(unsigned char *);
+void setuphlineasm4(long,long);
+void hlineasm4(long,unsigned long,long,unsigned long,unsigned long,intptr_t);
+void setuprhlineasm4(long,long,long,intptr_t,long,long);
+void rhlineasm4(long,intptr_t,long,unsigned long,unsigned long,intptr_t);
+void setuprmhlineasm4(long,long,long,intptr_t,long,long);
+void rmhlineasm4(long,intptr_t,long,long,long,intptr_t);
+void setupqrhlineasm4(long,long,long,intptr_t,long,long);
+void qrhlineasm4(long,intptr_t,long,long,long,intptr_t);
+void setvlinebpl(long);
+void fixtransluscence(intptr_t);
+long prevlineasm1(long,intptr_t,long,long,intptr_t,intptr_t);
+long vlineasm1(long,intptr_t,long,long,intptr_t,intptr_t);
+void setuptvlineasm(long);
+long tvlineasm1(long,intptr_t,long,long,intptr_t,intptr_t);
+void setuptvlineasm2(long,intptr_t,intptr_t);
+void tvlineasm2(unsigned long,unsigned long,uintptr_t,uintptr_t,unsigned long,uintptr_t);
+long mvlineasm1(long,intptr_t,long,long,intptr_t,intptr_t);
+void setupvlineasm(long);
+void vlineasm4(long,intptr_t);
+void setupmvlineasm(long);
+void mvlineasm4(long,intptr_t);
+void setupspritevline(intptr_t,long,long,long,long,long);
+void spritevline(long,unsigned long,long,unsigned long,intptr_t,intptr_t);
+void msetupspritevline(intptr_t,long,long,long,long,long);
+void mspritevline(long,long,long,long,intptr_t,intptr_t);
+void tsetupspritevline(intptr_t,long,long,long,long,long);
+void tspritevline(long,long,long,unsigned long,intptr_t,intptr_t);
+void mhline(intptr_t,long,long,long,long,intptr_t);
+void mhlineskipmodify(long,unsigned long,unsigned long,long,long,intptr_t);
+void msethlineshift(long,long);
+void thline(intptr_t,long,long,long,long,intptr_t);
+void thlineskipmodify(long,unsigned long,unsigned long,long,long,intptr_t);
+void tsethlineshift(long,long);
+void setupslopevlin(long,intptr_t,long);
+void slopevlin(intptr_t,unsigned long,intptr_t,long,long,long);
+void settransnormal(void);
+void settransreverse(void);
+long setupdrawslab(long,intptr_t);
+long drawslab(long,long,long,long,intptr_t,intptr_t);
 long stretchhline(long,long,long,long,long,long);
 long is_vmware_running(void);
 
