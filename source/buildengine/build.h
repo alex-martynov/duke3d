@@ -179,6 +179,7 @@ EXTERN short tilesizx[MAXTILES], tilesizy[MAXTILES];
 EXTERN char walock[MAXTILES];
 EXTERN long numtiles, picanm[MAXTILES];
 EXTERN long texfilter;  /* nonzero: dithered texture filtering on walls and flat floors */
+EXTERN long screenfilter;  /* scaling to the window: 0 nearest, 1 linear, 2 sharp (integer prescale, then linear) */
 EXTERN intptr_t waloff[MAXTILES];  /* tile data addresses */
 
     /*

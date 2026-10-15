@@ -146,6 +146,8 @@ SDL_Surface *surface = NULL; /* This isn't static so that we can use it elsewher
 static SDL_Window *window = NULL;
 static SDL_Renderer *sdlrenderer = NULL;
 static SDL_Texture *texture = NULL;
+static SDL_Texture *upscaled = NULL;  /* render target for screenfilter 2 */
+static SDL_Rect screenrect = { 0, 0, 0, 0 };  /* where the frame lands in the window */
 static Uint8 *surface_pixels = NULL;
 static Uint32 palette32[256];
 static int fullscreen = 1;
@@ -406,8 +408,45 @@ static void fatal_video_error(const char *what, int w, int h)
 } /* fatal_video_error */
 
 
+/*
+ * Windowed size for a w x h frame. The process is DPI aware (so Windows
+ *  doesn't blur the window with its own stretch), so grow the window by
+ *  the display's scale factor to keep its apparent size, but stay inside
+ *  the usable desktop area.
+ */
+static void windowed_size(int w, int h, int *ww, int *wh)
+{
+    int display = (window != NULL) ? SDL_GetWindowDisplayIndex(window) : 0;
+    float ddpi = 0.0f, scale = 1.0f;
+    SDL_Rect usable;
+
+    if (display < 0)
+        display = 0;
+    if ((SDL_GetDisplayDPI(display, &ddpi, NULL, NULL) == 0) && (ddpi > 96.0f))
+        scale = ddpi / 96.0f;
+
+    if (SDL_GetDisplayUsableBounds(display, &usable) == 0)
+    {
+        float fit = (float) usable.w / (float) w;
+        if ((float) (usable.h - 40) / (float) h < fit)  /* room for the title bar */
+            fit = (float) (usable.h - 40) / (float) h;
+        if ((fit > 0.0f) && (fit < scale))
+            scale = (fit < 1.0f) ? 1.0f : fit;
+    } /* if */
+
+    *ww = (int) ((float) w * scale);
+    *wh = (int) ((float) h * scale);
+} /* windowed_size */
+
+
 static void free_video_buffers(void)
 {
+    if (upscaled != NULL)
+    {
+        SDL_DestroyTexture(upscaled);
+        upscaled = NULL;
+    } /* if */
+
     if (texture != NULL)
     {
         SDL_DestroyTexture(texture);
@@ -438,9 +477,11 @@ static void go_to_new_vid_mode(int vidoption, int w, int h)
     if (window == NULL)
     {
         Uint32 flags = (fullscreen) ? SDL_WINDOW_FULLSCREEN_DESKTOP : 0;
+        int ww, wh;
+        windowed_size(w, h, &ww, &wh);
         window = SDL_CreateWindow(titlelong ? titlelong : "BUILD",
                                   SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
-                                  w, h, flags | SDL_WINDOW_RESIZABLE);
+                                  ww, wh, flags | SDL_WINDOW_RESIZABLE);
         if (window == NULL)
             fatal_video_error("SDL_CreateWindow()", w, h);
 
@@ -453,7 +494,9 @@ static void go_to_new_vid_mode(int vidoption, int w, int h)
     } /* if */
     else if (!fullscreen)
     {
-        SDL_SetWindowSize(window, w, h);
+        int ww, wh;
+        windowed_size(w, h, &ww, &wh);
+        SDL_SetWindowSize(window, ww, wh);
         SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     } /* else if */
 
@@ -491,11 +534,69 @@ static void go_to_new_vid_mode(int vidoption, int w, int h)
     if (texture == NULL)
         fatal_video_error("SDL_CreateTexture()", w, h);
 
-    SDL_RenderSetLogicalSize(sdlrenderer, w, h);
-
     output_surface_info(surface);
     init_new_res_vars(vidoption);
 } /* go_to_new_vid_mode */
+
+
+/*
+ * Fit the frame into the window (square pixels, centred, black bars) and
+ *  return the texture to draw there, filtered per screenfilter:
+ *  0 nearest, 1 linear, 2 "sharp bilinear": scale up by the largest whole
+ *  factor with nearest, then by the remaining fraction with linear. That
+ *  keeps pixels crisp but evenly sized at any window size.
+ */
+static SDL_Texture *scaled_frame(void)
+{
+    int ow, oh, k, uw = 0, uh = 0;
+    float scale;
+
+    if (SDL_GetRendererOutputSize(sdlrenderer, &ow, &oh) != 0)
+        SDL_GetWindowSize(window, &ow, &oh);
+
+    scale = (float) ow / (float) surface->w;
+    if ((float) oh / (float) surface->h < scale)
+        scale = (float) oh / (float) surface->h;
+    screenrect.w = (int) ((float) surface->w * scale + 0.5f);
+    screenrect.h = (int) ((float) surface->h * scale + 0.5f);
+    screenrect.x = (ow - screenrect.w) / 2;
+    screenrect.y = (oh - screenrect.h) / 2;
+
+    if (screenfilter != 2)
+    {
+        SDL_SetTextureScaleMode(texture, (screenfilter == 1) ? SDL_ScaleModeLinear : SDL_ScaleModeNearest);
+        return(texture);
+    } /* if */
+
+    k = (int) scale;
+    if (k < 1)
+        k = 1;
+
+    if (upscaled != NULL)
+        SDL_QueryTexture(upscaled, NULL, NULL, &uw, &uh);
+    if ((upscaled == NULL) || (uw != surface->w * k) || (uh != surface->h * k))
+    {
+        if (upscaled != NULL)
+            SDL_DestroyTexture(upscaled);
+        upscaled = SDL_CreateTexture(sdlrenderer, SDL_PIXELFORMAT_ARGB8888,
+                                     SDL_TEXTUREACCESS_TARGET,
+                                     surface->w * k, surface->h * k);
+        if (upscaled == NULL)  /* no render targets? Plain linear, then. */
+        {
+            sdldebug("Can't create %dx%d render target: [%s].",
+                     surface->w * k, surface->h * k, SDL_GetError());
+            SDL_SetTextureScaleMode(texture, SDL_ScaleModeLinear);
+            return(texture);
+        } /* if */
+        SDL_SetTextureScaleMode(upscaled, SDL_ScaleModeLinear);
+    } /* if */
+
+    SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
+    SDL_SetRenderTarget(sdlrenderer, upscaled);
+    SDL_RenderCopy(sdlrenderer, texture, NULL, NULL);
+    SDL_SetRenderTarget(sdlrenderer, NULL);
+    return(upscaled);
+} /* scaled_frame */
 
 
 /* Expand the 8-bit framebuffer through the palette and show it. */
@@ -525,7 +626,7 @@ static void present_framebuffer(void)
 
     SDL_SetRenderDrawColor(sdlrenderer, 0, 0, 0, 255);
     SDL_RenderClear(sdlrenderer);
-    SDL_RenderCopy(sdlrenderer, texture, NULL, NULL);
+    SDL_RenderCopy(sdlrenderer, scaled_frame(), NULL, &screenrect);
     SDL_RenderPresent(sdlrenderer);
 } /* present_framebuffer */
 
@@ -601,10 +702,17 @@ static int sdl_mouse_motion_filter(SDL_Event const *event)
         } /* if */
         else
         {
-            mouse_relative_x += event->motion.x - mouse_x;
-            mouse_relative_y += event->motion.y - mouse_y;
-            mouse_x = event->motion.x;
-            mouse_y = event->motion.y;
+            long x = event->motion.x;
+            long y = event->motion.y;
+            if ((screenrect.w > 0) && (screenrect.h > 0))
+            {
+                x = (x - screenrect.x) * surface->w / screenrect.w;
+                y = (y - screenrect.y) * surface->h / screenrect.h;
+            } /* if */
+            mouse_relative_x += x - mouse_x;
+            mouse_relative_y += y - mouse_y;
+            mouse_x = x;
+            mouse_y = y;
         } /* else */
     } /* else */
 
@@ -639,7 +747,11 @@ static int attempt_fullscreen_toggle(void)
 
     fullscreen = !fullscreen;
     if ((!fullscreen) && (surface != NULL))
-        SDL_SetWindowSize(window, surface->w, surface->h);
+    {
+        int ww, wh;
+        windowed_size(surface->w, surface->h, &ww, &wh);
+        SDL_SetWindowSize(window, ww, wh);
+    }
 
     output_surface_info(surface);
     return(1);
@@ -1093,6 +1205,9 @@ static void set_sdl_renderer(void)
     } /* else */
 
     SDL_SetMainReady();
+
+        /* real pixels on high-DPI displays; screenfilter does the scaling. */
+    SDL_SetHint(SDL_HINT_WINDOWS_DPI_AWARENESS, "permonitorv2");
 
         /* Direct3D 11 on Windows; SDL falls back on its own if unavailable. */
     if (getenv(BUILD_RENDERDRIVER) != NULL)

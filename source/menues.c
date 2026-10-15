@@ -2657,7 +2657,7 @@ void menus(void)
             else if(videomodesel >= validmodecnt) videomodesel = validmodecnt-1;
 
             onbar = (probey == 0);  /* left/right pick the resolution */
-            x = probe(c,50,16,2);
+            x = probe(c,50,16,3);
             switch(x)
             {
                 case -1:
@@ -2683,6 +2683,9 @@ void menus(void)
                 case 1:
                     texfilter = !texfilter;
                     break;
+                case 2:
+                    screenfilter = (screenfilter+1) % 3;
+                    break;
             }
 
             menutext(c,50,SHX(-2),PHX(-2),"RESOLUTION");
@@ -2691,11 +2694,19 @@ void menus(void)
                 sprintf((char *)tempbuf,"%ldX%ld",validmodexdim[videomodesel],validmodeydim[videomodesel]);
                 menutext(c+160+20,50,0,0,(char *)tempbuf);
                 if(validmodexdim[videomodesel] != xdim || validmodeydim[videomodesel] != ydim)
-                    gametext(160,50+16+16+8,"PRESS ENTER TO APPLY",0,2+8+16);
+                    gametext(160,50+16+16+16+8,"PRESS ENTER TO APPLY",0,2+8+16);
             }
 
             menutext(c,50+16,SHX(-3),PHX(-3),"TEXTURE FILTER");
             menutext(c+160+20,50+16,0,0,texfilter ? "ON" : "OFF");
+
+            menutext(c,50+16+16,SHX(-4),PHX(-4),"SCREEN FILTER");
+            switch(screenfilter)
+            {
+                case 1: menutext(c+160+20,50+16+16,0,0,"LINEAR"); break;
+                case 2: menutext(c+160+20,50+16+16,0,0,"SHARP"); break;
+                default: menutext(c+160+20,50+16+16,0,0,"OFF"); break;
+            }
             break;
 
         case 700:
