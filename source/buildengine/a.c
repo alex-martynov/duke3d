@@ -71,6 +71,49 @@ void hlineasm4(long _count, unsigned long unused_source, long _shade, unsigned l
     }
 }
 
+/*
+ * Dithered texture filtering, as Unreal's software renderer did it: each
+ *  pixel samples the texture at a sub-texel offset picked from a 2x2
+ *  screen-space pattern. At a distance this reads as bilinear smoothing,
+ *  and every pixel is still a real palette entry. The offsets are centred
+ *  around zero so the image doesn't shift. Units are 1/256 texel.
+ */
+const signed char texdither_u[2][2] = { { -32,  32 }, {  96, -96 } };
+const signed char texdither_v[2][2] = { { -96,  96 }, {  32, -32 } };
+
+/* hlineasm4() with texdither offsets; x and y are the screen position of dest. */
+void hlineasm4_dither(long _count, long _shade, unsigned long i4, unsigned long i5, intptr_t i6, long x, long y)
+{
+    unsigned char *dest = (unsigned char *) i6;
+    int shifter = ((256-machxbits_al) & 0x1f);
+    unsigned char bits = machxbits_bl;
+    unsigned char *lookup = (unsigned char *) machxbits_ecx;
+    unsigned char *pal = (unsigned char *) pal_eax;
+    long shade = _shade & 0xffffff00;
+    long count = _count + 1;
+    unsigned long source, du[2], dv[2];
+    int p;
+
+    for (p = 0; p < 2; p++)
+    {
+        du[p] = (unsigned long) ((((int64_t) texdither_u[y&1][p]) << shifter) >> 8);
+        dv[p] = (unsigned long) ((((int64_t) texdither_v[y&1][p]) << (32-bits)) >> 8);
+    }
+
+    while (count) {
+        p = x & 1;
+        source = (i5 + du[p]) >> shifter;
+        source = shld(source,(i4 + dv[p]),bits);
+        source = lookup[source];
+        *dest = pal[shade|source];
+        dest--;
+        x--;
+        i5 -= asm1;
+        i4 -= asm2;
+        count--;
+    }
+} /* hlineasm4_dither */
+
 static long rmach_eax;
 static long rmach_ebx;
 static long rmach_ecx;

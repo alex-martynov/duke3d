@@ -619,7 +619,7 @@ static void CONFIG_WriteDefaultSetup( void )
 
    fprintf(fp, "[Setup]\nSetupVersion = \"1.3D\"\n\n");
    fprintf(fp, "[Screen Setup]\nScreenMode = 1\nScreenWidth = 640\nScreenHeight = 480\n"
-               "Shadows = 1\nDetail = 1\nTilt = 1\nMessages = 1\nScreenSize = 8\nScreenGamma = 0\nOut = 0\nPassword = \"\"\n\n");
+               "Shadows = 1\nDetail = 1\nTilt = 1\nMessages = 1\nScreenSize = 8\nScreenGamma = 0\nOut = 0\nPassword = \"\"\nTextureFilter = 0\n\n");
    fprintf(fp, "[Sound Setup]\nFXDevice = 0\nMusicDevice = 0\nFXVolume = 192\nMusicVolume = 128\n"
                "SoundToggle = 1\nMusicToggle = 1\nVoiceToggle = 1\nAmbienceToggle = 1\n"
                "NumVoices = 16\nNumChannels = 2\nNumBits = 16\nMixRate = 44100\nMidiPort = 0x330\nReverseStereo = 0\n\n");
@@ -701,6 +701,9 @@ void CONFIG_ReadSetup( void )
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ScreenWidth",&ScreenWidth);
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ScreenHeight",&ScreenHeight);
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ScreenMode",&ScreenMode);
+   dummy = 0;
+   SCRIPT_GetNumber( scripthandle, "Screen Setup", "TextureFilter",&dummy);
+   texfilter = dummy;
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ScreenGamma",&ud.brightness);
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "ScreenSize",&ud.screen_size);
    SCRIPT_GetNumber( scripthandle, "Screen Setup", "Out",&ud.lockout);
@@ -819,6 +822,10 @@ void CONFIG_WriteSetup( void )
    if (!setupread) return;
 
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Shadows",ud.shadows,false,false);
+   SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenMode",ScreenMode,false,false);
+   SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenWidth",ScreenWidth,false,false);
+   SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenHeight",ScreenHeight,false,false);
+   SCRIPT_PutNumber( scripthandle, "Screen Setup", "TextureFilter",texfilter,false,false);
    SCRIPT_PutString( scripthandle, "Screen Setup", "Password",ud.pwlockout);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Detail",ud.detail,false,false);
    SCRIPT_PutNumber( scripthandle, "Screen Setup", "Tilt",ud.screen_tilting,false,false);

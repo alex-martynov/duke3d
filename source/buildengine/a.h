@@ -70,6 +70,11 @@ long drawslab(long,long,long,long,intptr_t,intptr_t);
 long stretchhline(long,long,long,long,long,long);
 long is_vmware_running(void);
 
+/* Dithered texture filtering: sub-texel offsets, in 1/256 texel, by [y&1][x&1]. */
+extern const signed char texdither_u[2][2];
+extern const signed char texdither_v[2][2];
+void hlineasm4_dither(long,long,unsigned long,unsigned long,intptr_t,long,long);
+
     /* !!! This part might be better stated as "USE_ASM".  --ryan. */
 #ifdef USE_I386_ASM
   long asm_mmxoverlay(void);

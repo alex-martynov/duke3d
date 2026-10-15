@@ -202,6 +202,7 @@ short uplc[MAXXDIM+1], dplc[MAXXDIM+1];
 static short uwall[MAXXDIM+1], dwall[MAXXDIM+1];
 static long swplc[MAXXDIM+1], lplc[MAXXDIM+1];
 static long swall[MAXXDIM+1], lwall[MAXXDIM+4];
+static unsigned char lwallfrac[MAXXDIM+4];  /* fractions of lwall[] in 1/256, for texfilter */
 long xdimen = -1, xdimenrecip, halfxdimen, xdimenscale, xdimscale;
 long wx1, wy1, wx2, wy2, ydimen;
 long viewoffset;
@@ -911,6 +912,7 @@ static void prepwall(long z, walltype *wal)
 		swall[x] = mulscale21(l,sinc)+splc;
 		l *= walxrepeat;
 		lwall[x] = (l>>18);
+		lwallfrac[x] = (unsigned char)(l>>10);
 	}
 	while (x+4 <= xb2[z])
 	{
@@ -921,11 +923,15 @@ static void prepwall(long z, walltype *wal)
 			swall[x+4] = mulscale21(l,sinc)+splc;
 			l *= walxrepeat;
 			lwall[x+4] = (l>>18);
+			lwallfrac[x+4] = (unsigned char)(l>>10);
 		}
 		i = ((ol+l)>>1);
 		lwall[x+2] = (i>>18);
 		lwall[x+1] = ((ol+i)>>19);
 		lwall[x+3] = ((l+i)>>19);
+		lwallfrac[x+2] = (unsigned char)(i>>10);
+		lwallfrac[x+1] = (unsigned char)((ol+i)>>11);
+		lwallfrac[x+3] = (unsigned char)((l+i)>>11);
 		swall[x+2] = ((swall[x]+swall[x+4])>>1);
 		swall[x+1] = ((swall[x]+swall[x+2])>>1);
 		swall[x+3] = ((swall[x+4]+swall[x+2])>>1);
@@ -940,8 +946,10 @@ static void prepwall(long z, walltype *wal)
 			swall[x+2] = mulscale21(l,sinc)+splc;
 			l *= walxrepeat;
 			lwall[x+2] = (l>>18);
+			lwallfrac[x+2] = (unsigned char)(l>>10);
 		}
 		lwall[x+1] = ((l+ol)>>19);
+		lwallfrac[x+1] = (unsigned char)((l+ol)>>11);
 		swall[x+1] = ((swall[x]+swall[x+2])>>1);
 		x += 2;
 	}
@@ -953,15 +961,16 @@ static void prepwall(long z, walltype *wal)
 			l = divscale12(top+(topinc>>2),bot);
 			swall[x+1] = mulscale21(l,sinc)+splc;
 			lwall[x+1] = mulscale18(l,walxrepeat);
+			lwallfrac[x+1] = (unsigned char)mulscale10(l,walxrepeat);
 		}
 	}
 
-	if (lwall[xb1[z]] < 0) lwall[xb1[z]] = 0;
-	if ((lwall[xb2[z]] >= walxrepeat) && (walxrepeat)) lwall[xb2[z]] = walxrepeat-1;
+	if (lwall[xb1[z]] < 0) { lwall[xb1[z]] = 0; lwallfrac[xb1[z]] = 0; }
+	if ((lwall[xb2[z]] >= walxrepeat) && (walxrepeat)) { lwall[xb2[z]] = walxrepeat-1; lwallfrac[xb2[z]] = 255; }
 	if (wal->cstat&8)
 	{
 		walxrepeat--;
-		for(x=xb1[z];x<=xb2[z];x++) lwall[x] = walxrepeat-lwall[x];
+		for(x=xb1[z];x<=xb2[z];x++) { lwall[x] = walxrepeat-lwall[x]; lwallfrac[x] = 255-lwallfrac[x]; }
 	}
 }
 
@@ -981,6 +990,13 @@ static void hline (long xr, long yp)
 	asm1 = globalx1*r;
 	asm2 = globaly2*r;
 	s = ((long)getpalookup((long)mulscale16(r,globvis),globalshade)<<8);
+
+	if (texfilter)
+	{
+		hlineasm4_dither(xr-xl,s,globalx2*r+globalypanning,globaly1*r+globalxpanning,
+			ylookup[yp]+xr+frameoffset,xr,yp);
+		return;
+	}
 
 	hlineasm4(xr-xl,0L,s,globalx2*r+globalypanning,globaly1*r+globalxpanning,
 		ylookup[yp]+xr+frameoffset);
@@ -1397,6 +1413,53 @@ static void florscan (long x1, long x2, long sectnum)
  *
  *  --ryan.
  */
+/*
+ * wallscan() with dithered texture filtering (see texdither_u in a.c).
+ *  Within a column the u offset alternates per row, so even and odd rows
+ *  read from their own texture column.
+ */
+static void wallscan_dither(long x1, long x2, short *uwal, short *dwal,
+                            long *swal, long *lwal, long tsizx, long xnice,
+                            long tsizy, long ynice, intptr_t fpalookup)
+{
+	long x, y, y1, y2, p, col, vinc, vplc, voff[2];
+	int sh = (int)(globalshiftval & 31);
+	intptr_t buf[2];
+	unsigned char *pal, *dest;
+
+	for(x=x1;x<=x2;x++)
+	{
+		y1 = max(uwal[x],umost[x]);
+		y2 = min(dwal[x],dmost[x]);
+		if (y2 <= y1) continue;
+
+		pal = (unsigned char *)(fpalookup+(getpalookup((long)mulscale16(swal[x],globvis),globalshade)<<8));
+
+		for(p=0;p<2;p++)
+		{
+			col = (((lwal[x]+globalxpanning)<<8) + lwallfrac[x] + texdither_u[(y1+p)&1][x&1]) >> 8;
+			if (xnice) col &= tsizx;
+			else { col %= tsizx; if (col < 0) col += tsizx; }
+			if (ynice == 0) col *= tsizy; else col <<= tsizy;
+			buf[p] = waloff[globalpicnum]+col;
+			voff[p] = (long)((((int64_t)texdither_v[(y1+p)&1][x&1]) << sh) >> 8);
+		}
+
+		vinc = swal[x]*globalyscale;
+		vplc = globalzd + vinc*(y1-globalhoriz+1);
+		dest = (unsigned char *)(frameoffset+ylookup[y1]+x);
+
+		for(y=y1;y<y2;y++)
+		{
+			p = ((y-y1)&1);
+			*dest = pal[((unsigned char *)buf[p])[((unsigned long)(vplc+voff[p]))>>sh]];
+			dest += ylookup[1];
+			vplc += vinc;
+		}
+	}
+}
+
+
 static void wallscan(long x1, long x2,
                      short *uwal, short *dwal,
                      long *swal, long *lwal)
@@ -1423,6 +1486,13 @@ static void wallscan(long x1, long x2,
 	fpalookup = FP_OFF(palookup[globalpal]);
 
 	setupvlineasm(globalshiftval);
+
+	if ((texfilter) && (lwal == lwall))  /* lwallfrac[] belongs to lwall[] */
+	{
+		wallscan_dither(x1,x2,uwal,dwal,swal,lwal,tsizx,xnice,tsizy,ynice,fpalookup);
+		faketimerhandler();
+		return;
+	}
 
 	x = x1;
 	while ((umost[x] > dmost[x]) && (x <= x2)) x++;

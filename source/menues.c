@@ -1618,6 +1618,29 @@ static void non3dr_menus(void)
 }
 
 
+/* VIDEO SETUP menu (210): the mode picked with left/right, applied on Enter. */
+static long videomodesel = 0;
+
+static long findvideomode(long w, long h)
+{
+    long i;
+
+    for(i=0;i<validmodecnt;i++)
+        if(validmodexdim[i] == w && validmodeydim[i] == h)
+            return(i);
+    return(-1);
+}
+
+static void setvideomode(long w, long h)
+{
+    ScreenMode = 1;
+    ScreenWidth = w;
+    ScreenHeight = h;
+    setgamemode((char) ScreenMode,ScreenWidth,ScreenHeight);
+    vscrn();
+    setbrightness(ud.brightness>>2,&ps[myconnectindex].palette[0]);
+}
+
 void menus(void)
 {
     int count;
@@ -2490,11 +2513,19 @@ void menus(void)
             c = (320>>1)-120;
 
             onbar = (probey == 3 || probey == 4 || probey == 5);
-            count = 10;
+            count = 11;  /* ...plus VIDEO SETUP, always the last row */
 #if CONTROLS_CONFIG_MENU
             count++;
 #endif
             x = probe(c+6,31,15,count);
+
+            if(x == count-1)
+            {
+                videomodesel = findvideomode(xdim,ydim);
+                if(videomodesel < 0) videomodesel = 0;
+                cmenu(210);
+                break;
+            }
 
             if(x == -1)
                 { if(ps[myconnectindex].gm&MODE_GAME) cmenu(50);else cmenu(0); }
@@ -2614,6 +2645,57 @@ void menus(void)
 #if CONTROLS_CONFIG_MENU
             menutext(c,31+15+15+15+15+15+15+15+15+15+15,SHX(-11),PHX(-11),"CONTROLS...");
 #endif
+            menutext(c,31+15*(count-1),SHX(-12),PHX(-12),"VIDEO SETUP...");
+            break;
+
+        case 210:
+            c = (320>>1)-120;
+            rotatesprite(320<<15,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
+            menutext(320>>1,24,0,0,"VIDEO SETUP");
+
+            if(validmodecnt <= 0) videomodesel = -1;
+            else if(videomodesel >= validmodecnt) videomodesel = validmodecnt-1;
+
+            onbar = (probey == 0);  /* left/right pick the resolution */
+            x = probe(c,50,16,2);
+            switch(x)
+            {
+                case -1:
+                    cmenu(200);
+                    break;
+                case 0:
+                    if( KB_KeyPressed( sc_LeftArrow ) || KB_KeyPressed( sc_kpad_4 ) )
+                    {
+                        KB_ClearKeyDown( sc_LeftArrow );
+                        KB_ClearKeyDown( sc_kpad_4 );
+                        if(videomodesel > 0) { videomodesel--; sound(KICK_HIT); }
+                    }
+                    else if( KB_KeyPressed( sc_RightArrow ) || KB_KeyPressed( sc_kpad_6 ) )
+                    {
+                        KB_ClearKeyDown( sc_RightArrow );
+                        KB_ClearKeyDown( sc_kpad_6 );
+                        if(videomodesel < validmodecnt-1) { videomodesel++; sound(KICK_HIT); }
+                    }
+                    else if(videomodesel >= 0 &&
+                            (validmodexdim[videomodesel] != xdim || validmodeydim[videomodesel] != ydim))
+                        setvideomode(validmodexdim[videomodesel],validmodeydim[videomodesel]);
+                    break;
+                case 1:
+                    texfilter = !texfilter;
+                    break;
+            }
+
+            menutext(c,50,SHX(-2),PHX(-2),"RESOLUTION");
+            if(videomodesel >= 0)
+            {
+                sprintf((char *)tempbuf,"%ldX%ld",validmodexdim[videomodesel],validmodeydim[videomodesel]);
+                menutext(c+160+20,50,0,0,(char *)tempbuf);
+                if(validmodexdim[videomodesel] != xdim || validmodeydim[videomodesel] != ydim)
+                    gametext(160,50+16+16+8,"PRESS ENTER TO APPLY",0,2+8+16);
+            }
+
+            menutext(c,50+16,SHX(-3),PHX(-3),"TEXTURE FILTER");
+            menutext(c+160+20,50+16,0,0,texfilter ? "ON" : "OFF");
             break;
 
         case 700:

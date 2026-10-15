@@ -178,6 +178,7 @@ EXTERN short nextspritesect[MAXSPRITES], nextspritestat[MAXSPRITES];
 EXTERN short tilesizx[MAXTILES], tilesizy[MAXTILES];
 EXTERN char walock[MAXTILES];
 EXTERN long numtiles, picanm[MAXTILES];
+EXTERN long texfilter;  /* nonzero: dithered texture filtering on walls and flat floors */
 EXTERN intptr_t waloff[MAXTILES];  /* tile data addresses */
 
     /*
