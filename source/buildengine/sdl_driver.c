@@ -96,8 +96,8 @@ extern long setvlinebpl(long);
  * !!!  needed safety right now. --ryan.
  */
 
-#define DEFAULT_MAXRESWIDTH  1600
-#define DEFAULT_MAXRESHEIGHT 1200
+#define DEFAULT_MAXRESWIDTH  MAXXDIM
+#define DEFAULT_MAXRESHEIGHT MAXYDIM
 
 
 #define UNLOCK_SURFACE_AND_RETURN  if (SDL_MUSTLOCK(surface)) SDL_UnlockSurface(surface); return;
@@ -431,7 +431,7 @@ static void windowed_size(int w, int h, int *ww, int *wh)
         if ((float) (usable.h - 40) / (float) h < fit)  /* room for the title bar */
             fit = (float) (usable.h - 40) / (float) h;
         if ((fit > 0.0f) && (fit < scale))
-            scale = (fit < 1.0f) ? 1.0f : fit;
+            scale = fit;
     } /* if */
 
     *ww = (int) ((float) w * scale);
@@ -1639,8 +1639,8 @@ int _setgamemode(char davidoption, long daxdim, long daydim)
 
     if (daxdim > MAXXDIM || daydim > MAXYDIM)
     {
-	    daxdim = 1600;
-	    daydim = 1200;
+	    daxdim = 640;
+	    daydim = 480;
     }
 
     if (in_egapalette)
@@ -1913,7 +1913,7 @@ static __inline void cleanup_vesa_modelist(void)
 
 static __inline void output_vesa_modelist(void)
 {
-    char buffer[256];
+    char buffer[1024];
     char numbuf[20];
     int i;
 
@@ -1943,7 +1943,10 @@ void getvalidvesamodes(void)
     int i;
     int stdres[][2] = {
                         {320, 200}, {320, 240}, {640, 350},
-			{640, 480}, {800, 600}, {1024, 768}
+			{640, 480}, {800, 600}, {1024, 768},
+			    /* common wide modes, offered even if the display doesn't list them */
+			{1280, 720}, {1600, 900}, {1920, 1080}, {2560, 1440}, {3840, 2160},
+			{1280, 800}, {1680, 1050}, {1920, 1200}, {2560, 1600}
                       };
 
     if (already_checked)
@@ -2184,6 +2187,8 @@ void _nextpage(void)
     total_render_time = (ticks - last_render_ticks);
     if (total_render_time > 1000)
     {
+        sdldebug("%ld frames/sec at %dx%d.", total_rendered_frames,
+                 surface ? surface->w : 0, surface ? surface->h : 0);
         total_rendered_frames = 0;
         total_render_time = 1;
         last_render_ticks = ticks;
